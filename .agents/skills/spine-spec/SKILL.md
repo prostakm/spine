@@ -1,49 +1,75 @@
 ---
 name: spine-spec
 description: >
-  Define requirements for a feature before planning. Use when the user wants
-  to flesh out what a feature should do before implementation. Triggers on:
-  "spec", "specify", "requirements", "what should this do", "define the feature".
-  Do NOT use for implementation planning (that's spine-pwf) or quick edits.
+  Define requirements for a feature before planning. Invoke explicitly
+  with $spine-spec. Does NOT activate automatically.
+allow_implicit_invocation: false
 ---
 
 # Spine Spec: Requirements Definition
 
-## Purpose
-Turn a vague feature idea into a concrete, testable specification
-that feeds into the planning workflow.
-
 ## Workflow
 
-### Step 1: Read project context
-- Read `.spine/project.md` for constraints and stack
-- Read `.spine/conventions.md` for conventions
-- Read `.spine/progress.md` for related/dependent features
+### Step 1: Context + codebase research
+- Read `.spine/project.md`, `.spine/conventions.md`, `.spine/progress.md`
+- Spawn `spine_explorer` to scan codebase for:
+  - Existing code related to the feature area
+  - Patterns already established (auth, API style, data access)
+  - Potential conflicts or integration points
+- Use explorer findings to inform questions (don't ask what the codebase already answers)
 
-### Step 2: Elicit requirements
+### Step 2: Detect role and adopt persona
+
+**Product Owner** — when the feature is user-facing:
+triggers: UI, user flow, notification, onboarding, dashboard, report, permission
+
+Concerns to probe:
+- Who are the users? What triggers this flow?
+- What's the happy path? What does the user see/do at each step?
+- What happens on failure? What feedback does the user get?
+- Edge cases: empty states, first-time use, concurrent users
+- Priority: MVP scope vs nice-to-have — what can we cut?
+- Success metric: how do we know this feature works for users?
+
+**Architect** — when the feature is technical/infrastructure:
+triggers: migration, refactor, API, integration, performance, security, schema, deploy
+
+Concerns to probe:
+- What's the current state? What's broken or missing?
+- Data flow: what goes in, transforms, comes out?
+- Failure modes: what breaks? What's the blast radius?
+- Migration: can we do it incrementally or is it all-or-nothing?
+- Performance: latency budget? Throughput requirement?
+- Security: auth, input validation, data exposure?
+- Rollback: how do we undo this if it goes wrong?
+
+**Both roles always ask:**
+- What is explicitly NOT in scope?
+- Dependencies on other features?
+- Acceptance criteria — how do we verify it works?
+
+### Step 3: Elicit requirements
 Read autonomy from `.spine/config.yaml`:
-- **low**: Ask all questions individually, confirm each answer
-- **med**: Ask 2-3 key questions, infer the rest, present for confirmation
-- **high**: Infer as much as possible, present complete spec for single approval
+- **low**: ask all relevant questions individually, confirm each
+- **med**: ask 3-5 key questions (prioritized by role), infer rest, present for confirmation
+- **high**: infer from codebase + context, present complete spec for approval
 
-Questions to cover (adapt to what user already provided):
-1. **What** — What does this feature do? What problem does it solve?
-2. **Who** — Who uses it? What triggers it?
-3. **Boundaries** — What is explicitly NOT in scope?
-4. **Inputs/Outputs** — What data goes in? What comes out?
-5. **Constraints** — Performance? Security? Reference .spine/project.md.
-6. **Dependencies** — Related features in .spine/progress.md?
-7. **Verification** — How do we know it works? Acceptance criteria?
+Adapt to what user already provided — skip answered questions.
+Use explorer findings to make questions specific:
+  BAD:  "What database will you use?"
+  GOOD: "The codebase uses SQLite via internal/db. Should this feature use the same connection or need its own storage?"
 
-### Step 3: Create spec file
-- Determine feature slug (kebab-case)
-- Write slug to `.spine/active-feature`
-- Create `.spine/features/{slug}/spec.md` using the spec template
-- Every requirement MUST be testable
-- Keep spec under 60 lines — if longer, split the feature
-- No implementation details (no "use library X")
+### Step 4: Create spec file
+- Slug (kebab-case) → `.spine/active-feature`
+- Write `.spine/features/{slug}/spec.md`
+- Tag the role used: `**Role:** product-owner` or `**Role:** architect`
+- Every requirement must be testable
+- Under 60 lines — if longer, split the feature
+- No implementation details
 
-### Step 4: Hand off
-After user approves:
-1. Update `.spine/progress.md`: add feature with status `specced`
-2. Tell user: "Spec complete. Start planning with: plan the {slug} feature"
+### Step 5: STOP (Gate 1)
+Update `.spine/progress.md` → status `specced`. Tell user:
+
+> "Spec at `.spine/features/{slug}/spec.md`. Say **$spine-pwf {slug}** when ready to plan."
+
+Do NOT auto-generate a plan.

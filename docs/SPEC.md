@@ -21,15 +21,18 @@ control how much the agent asks before acting.
   implementation and flags conflicts rather than silently deviating.
 - REQ-6: Spec creation skill — optional `$spine-spec` skill for fleshing out
   requirements before planning, producing `.spine/features/{slug}/spec.md`.
-- REQ-7: Subagent definitions — three custom Codex agents (explorer, worker,
-  reviewer) with per-agent model and reasoning effort configuration.
+- REQ-7: Subagent definitions — custom Codex agents for explorer, worker-simple,
+  worker-complex, worker alias, and reviewer, with per-agent model and reasoning
+  effort configuration.
 - REQ-8: Plan mode integration — framework uses Codex plan mode (Shift+Tab)
-  for the design phase and PWF hooks for the execution phase.
-- REQ-9: Inspired by PWF — planning workflow uses PWF's proven patterns
+  for the design phase and structured PWF-style hooks for execution discipline.
+- REQ-9: Explicit invocation — the framework does not activate automatically;
+  users invoke `$spine-spec` or `$spine-pwf` when they want the workflow.
+- REQ-10: Inspired by PWF — planning workflow uses PWF's proven patterns
   (3 files, hooks, 2-Action Rule, 3-Strike Protocol) reimplemented for
   `.spine/` directory structure without runtime dependency on PWF.
-- REQ-10: Install script — single `install.sh` bootstraps the framework into
-  any project: copies files, patches AGENTS.md, sets up config.
+- REQ-11: Install/update scripts — `install.sh` and `update.sh` bootstrap or
+  refresh the framework, copy files, patch AGENTS.md, and manage Codex config.
 
 ## Out of Scope
 
@@ -44,11 +47,11 @@ control how much the agent asks before acting.
 - [ ] Running `./install.sh` in a fresh repo creates all `.spine/` and `.codex/` files
 - [ ] AGENTS.md is created (or appended to existing) with full workflow instructions
 - [ ] Codex CLI recognizes spine-spec and spine-pwf as available skills
-- [ ] Creating a feature with "create a spec for auth" produces spec.md in correct location
-- [ ] Planning workflow creates plan.md/findings.md/log.md in correct feature directory
-- [ ] PreToolUse hook reads plan from `.spine/features/{active}/plan.md`
-- [ ] Stop hook checks phase completion in active feature's plan.md
-- [ ] After `/clear`, agent can recover session from feature files
-- [ ] `.spine/progress.md` updated on feature completion
-- [ ] Subagent TOML files load correctly in Codex CLI
-- [ ] Built-in `$plan` skill does not conflict (plan mode used for design, PWF for execution)
+- [ ] Creating a feature with `$spine-spec` produces spec.md in the correct location
+- [ ] Planning workflow creates plan.md/findings.md/log.md in the correct feature directory
+- [ ] PreToolUse and PostToolUse hooks emit structured messages for Codex
+- [ ] Stop hook blocks when active-feature work remains incomplete
+- [ ] SessionStart hook restores project and feature context
+- [ ] `.spine/progress.md` updates on feature completion
+- [ ] Worker-simple, worker-complex, worker alias, explorer, and reviewer TOMLs load correctly
+- [ ] Existing `.codex/config.toml` files keep user settings outside the Spine-managed block

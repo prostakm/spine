@@ -2,6 +2,25 @@
 model = "gpt-5.4"
 model_reasoning_effort = "high"
 
+# BEGIN PROJECT SPINE MANAGED INSTRUCTIONS
+developer_instructions = """
+Project Spine execution policy:
+- Main thread owns requirements, approvals, integration decisions, and final user communication.
+- Skills do not change models; only explicit subagent delegation changes models.
+- For approved non-trivial implementation work, explicitly spawn `spine_worker_simple`.
+- Escalate to `spine_worker_complex` only for cross-cutting, refactor-heavy, migration-like, or failure-prone phases.
+- Keep `spine_worker` as a backward-compatible alias of the simple worker.
+- Use `spine_explorer` only for read-heavy prep when extra research materially helps.
+- After implementation completes, explicitly spawn `spine_reviewer` for verification.
+- Keep trivial edits on the main thread.
+- Never run more than one writing subagent at once.
+- If subagent tools are unavailable, continue on the main thread and state that fallback explicitly.
+"""
+# END PROJECT SPINE MANAGED INSTRUCTIONS
+
+[features]
+codex_hooks = true
+
 # Subagent limits
 [agents]
 max_threads = 4

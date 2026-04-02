@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
 # Project Spine: PostToolUse hook
-# Reminds to update phase status after Write/Edit operations.
+# Reminds to update phase status after Bash operations that change state.
 
-echo "If this completes a phase, update plan.md status and log.md."
+printf '{"systemMessage":"If this Bash command completed a phase, update plan.md status and log.md."}\n'

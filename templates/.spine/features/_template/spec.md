@@ -1,28 +1,30 @@
 # Spec: {FEATURE_NAME}
 
+**Role:** {product-owner | architect}
+
 ## Problem
-{One paragraph: what problem this solves and why it matters.}
+{What's broken or missing — one paragraph.}
 
 ## Requirements
-- REQ-1: {Testable requirement}
-- REQ-2: {Testable requirement}
+- REQ-1: {testable requirement}
+- REQ-2: {testable requirement}
 
 ## Out of Scope
-- {Explicitly excluded item}
+- {explicitly excluded}
 
 ## Inputs & Outputs
-- Input: {description}
-- Output: {description}
+- In: {what}
+- Out: {what}
 
 ## Constraints
-- {From .spine/project.md or feature-specific}
+- {from .spine/project.md or feature-specific}
 
 ## Dependencies
-- {Other features from .spine/progress.md, or "none"}
+- {from .spine/progress.md, or "none"}
 
 ## Acceptance Criteria
-- [ ] {Testable criterion}
-- [ ] {Testable criterion}
+- [ ] {testable criterion}
+- [ ] {testable criterion}
 
 ## Open Questions
-- {Anything unresolved — user decides before planning}
+- {unresolved — decide before planning}

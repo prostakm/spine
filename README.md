@@ -27,6 +27,7 @@ cd your-project
 The install script:
 - Creates `.spine/` with project tracking files and feature templates
 - Installs Codex skills, hooks, and subagent definitions
+- Adds a Spine-managed `developer_instructions` block to `.codex/config.toml`
 - Creates or extends `AGENTS.md`
 
 ## Quick Start
@@ -39,15 +40,15 @@ codex
 > $spine-spec create a spec for user authentication
 
 # Option B: Go straight to planning
-> Plan and implement a user authentication system
-
-# The workflow activates automatically for complex tasks
+> $spine-pwf auth
 ```
+
+The workflow does not activate automatically. Invoke `$spine-spec` or `$spine-pwf` when you want the framework.
 
 ## How It Works
 
 **Plan mode** (Shift+Tab) → design without writing code
-**Execute mode** (Shift+Tab again) → PWF hooks keep you on track
+**Execute mode** (Shift+Tab again) → same workflow, with explicit worker/reviewer delegation for non-trivial implementation and verification
 
 ```
 Idea → $spine-spec → spec.md → plan.md → execute → review
@@ -73,7 +74,7 @@ Idea → $spine-spec → spec.md → plan.md → execute → review
 |---|---|---|---|
 | **low** | User approves each phase | Pauses after each phase | User requests manually |
 | **med** | User approves plan once | Runs without pausing | Auto after final phase |
-| **high** | Auto-approved if no conflicts | Parallel phases | Auto with summary |
+| **high** | Auto-approved if no conflicts | Delegates bounded work, one writing worker at a time | Auto with summary |
 
 Set in `.spine/config.yaml`:
 ```yaml
@@ -85,13 +86,19 @@ autonomy: med  # low | med | high
 | Agent | Model | Purpose |
 |---|---|---|
 | `spine_explorer` | gpt-5.4-mini (medium) | Read-only codebase research |
-| `spine_worker` | gpt-5.3-codex (high) | Plan-scoped implementation |
+| `spine_worker_simple` | gpt-5.4-mini (medium) | Default plan-scoped implementation |
+| `spine_worker_complex` | gpt-5-codex (medium) | Escalation worker for harder phases |
+| `spine_worker` | gpt-5.4-mini (medium) | Backward-compatible alias of the simple worker |
 | `spine_reviewer` | gpt-5.4 (high) | Post-implementation verification |
+
+Skills such as `$spine-spec` and `$spine-pwf` run on the main session model.
+Only explicit subagent delegation changes models.
+Subagent `.toml` files register available agents; the routing policy comes from the shipped instructions in `.codex/config.toml` and `AGENTS.md`.
 
 ### Hooks
 
-- **PreToolUse**: Injects first 30 lines of current plan before every tool call
-- **PostToolUse**: Reminds to update phase status
+- **SessionStart**: Loads project, conventions, and active feature context on startup/resume
+- **PreToolUse / PostToolUse**: Bash-scoped structured reminders for active-plan discipline
 - **Stop**: Blocks until all phases are marked complete
 
 ## Customization
@@ -99,11 +106,13 @@ autonomy: med  # low | med | high
 Edit `.spine/config.yaml` to change models:
 ```yaml
 models:
-  implementation: { model: gpt-5.4-mini, effort: medium }  # cheaper
-  review: { model: gpt-5.4, effort: xhigh }                # thorough
+  implementation_simple: { model: gpt-5.4-mini, effort: medium }
+  implementation_complex: { model: gpt-5-codex, effort: medium }
+  review: { model: gpt-5.4, effort: high }
 ```
 
 Edit `.codex/agents/*.toml` to customize subagent behavior.
+Edit the Project Spine managed block in `.codex/config.toml` to change the default delegation policy.
 
 ## License
 

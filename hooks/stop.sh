@@ -1,32 +1,31 @@
 #!/usr/bin/env bash
 # Project Spine: Stop hook
-# Verifies all phases are complete before allowing the agent to stop.
-# Returns non-zero exit + message if phases remain incomplete.
+# Checks for incomplete work before allowing stop.
+# Works with phased plans (Status: pending/in_progress) and flat plans (unchecked [ ] tasks).
 
 SPINE_DIR=".spine"
 ACTIVE_FILE="${SPINE_DIR}/active-feature"
 
-if [ ! -f "$ACTIVE_FILE" ]; then
-    exit 0  # No active feature, allow stop
-fi
+[ ! -f "$ACTIVE_FILE" ] && exit 0
 
 SLUG=$(cat "$ACTIVE_FILE" 2>/dev/null | tr -d '[:space:]')
-if [ -z "$SLUG" ]; then
-    exit 0
-fi
+[ -z "$SLUG" ] && exit 0
 
 PLAN="${SPINE_DIR}/features/${SLUG}/plan.md"
-if [ ! -f "$PLAN" ]; then
+[ ! -f "$PLAN" ] && exit 0
+
+INCOMPLETE=$(grep -E -c '\*\*Status:\*\*\s*(pending|in_progress)' "$PLAN" 2>/dev/null || true)
+[ -z "$INCOMPLETE" ] && INCOMPLETE=0
+if [ "$INCOMPLETE" -gt 0 ]; then
+    printf '{"continue":false,"stopReason":"%s phase(s) incomplete in %s.","suppressOutput":false}\n' "$INCOMPLETE" "$PLAN"
     exit 0
 fi
 
-# Count incomplete phases (lines with "Status:** pending" or "Status:** in_progress")
-INCOMPLETE=$(grep -c -E '\*\*Status:\*\*\s*(pending|in_progress)' "$PLAN" 2>/dev/null)
-
-if [ "$INCOMPLETE" -gt 0 ]; then
-    echo "STOP BLOCKED: ${INCOMPLETE} phase(s) still incomplete in ${PLAN}."
-    echo "Complete all phases before stopping, or update plan.md to reflect current state."
-    exit 1
+UNCHECKED=$(grep -E -c '^\s*- \[ \]' "$PLAN" 2>/dev/null || true)
+[ -z "$UNCHECKED" ] && UNCHECKED=0
+if [ "$UNCHECKED" -gt 0 ]; then
+    printf '{"continue":false,"stopReason":"%s unchecked task(s) remain in %s.","suppressOutput":false}\n' "$UNCHECKED" "$PLAN"
+    exit 0
 fi
 
 exit 0

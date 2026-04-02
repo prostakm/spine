@@ -1,96 +1,85 @@
 # <!-- BEGIN PROJECT SPINE -->
 
-## Project Context
-Read `.spine/project.md` for vision, stack, and hard constraints.
-Read `.spine/conventions.md` for coding conventions and architecture decisions.
-Check `.spine/progress.md` for feature status and dependencies.
-The active feature slug is in `.spine/active-feature`.
+## Project Spine
 
-## Workflow
+This project has the Project Spine workflow framework installed.
+It does NOT activate automatically. Invoke explicitly:
+- `$spine-spec` — define requirements for a feature
+- `$spine-pwf` — plan and implement a feature
+- Or say: "use spine", "spine plan", "spine spec"
 
-This project uses **Project Spine** — a file-based planning workflow.
-Do NOT use `~/.codex/plans/` for plan storage. All planning artifacts
-live in `.spine/features/{slug}/`.
+Without explicit invocation, work normally — no planning files, no gates, no hooks.
 
-### Starting a feature
-1. Enter Plan mode (Shift+Tab or /plan) for the design phase.
-2. Write the feature slug to `.spine/active-feature`.
-3. Create `.spine/features/{slug}/` with plan.md, findings.md, log.md from templates.
-4. Read `.spine/project.md` for constraints and `.spine/conventions.md` for conventions.
-5. If a spec is needed, use the `$spine-spec` skill first.
-6. Draft the plan in plan.md (3-7 phases with checkboxes).
-7. Present plan to user for approval.
-8. On approval, switch to Execute mode (Shift+Tab) and begin implementation.
+### When invoked, the workflow has two hard gates:
 
-### During execution
-- The PreToolUse hook refreshes plan.md before every write/edit/bash operation.
-- After every 2 view/search/read operations, update findings.md (2-Action Rule).
-- When a phase completes: update plan.md status, update log.md with actions taken.
-- On errors: log in plan.md Errors table, follow 3-Strike Protocol
-  (diagnose → alternative approach → rethink strategy → escalate).
+```
+$spine-spec ──► STOP ──► $spine-pwf ──► STOP ──► implement ──► review
+                "plan when ready"       user reviews plan.md
+                                        inline > [R]: comments
+                                        marks APPROVED
+```
 
-### Completing a feature
-- Verify all phases marked complete in plan.md.
-- Update `.spine/progress.md` with feature status.
-- Review findings.md `## Promote to Project` section — promote to conventions.md if approved.
+- After spec: STOP. Do NOT auto-plan.
+- After plan: STOP. Do NOT code until APPROVED.
+- Gates apply at all autonomy levels.
 
-### Session recovery (after /clear or new session)
-1. Read `.spine/active-feature` → current feature slug
-2. Read `.spine/features/{slug}/plan.md` → current phase and goal
-3. Read `.spine/features/{slug}/findings.md` → research context
-4. Read `.spine/features/{slug}/log.md` → what was done
-5. Run `git diff --stat` → what code changed
-6. Resume from the current in_progress phase.
+### Context files (read when spine is invoked)
+- `.spine/project.md` — vision, stack, constraints
+- `.spine/conventions.md` — coding conventions, decision log
+- `.spine/progress.md` — feature status dashboard
+- `.spine/config.yaml` — autonomy level, model preferences
 
-## Model Routing
+### Plan detail
+- File paths, types/schemas, function signatures, pseudocode (non-trivial only)
+- Edge cases, test case names, verify command
+- Phase split only when natural — single-plan is fine
+- See `docs/EXAMPLE-PLAN.md` for style
 
-### Specification ($spine-spec)
-Use gpt-5.4 at reasoning effort high. Interactive requirements elicitation.
+### Inline plan review
+User edits plan.md directly with `> [R]:` comments next to relevant content.
+On "address comments": apply changes, answer as `> [A]:`, mark ✓.
+On `> [R]: APPROVED`: proceed to implementation.
 
-### Codebase exploration
-Spawn `spine_explorer` subagent (gpt-5.4-mini, medium effort, read-only).
-Return concise summaries with file paths, not raw content.
+### Decision involvement (from .spine/config.yaml)
 
-### Planning
-Use gpt-5.4 at reasoning effort high in the main session.
+| | low | med | high |
+|---|---|---|---|
+| Planning | ASK every choice | ASK arch/deps/APIs | Decide, show rationale |
+| Implementation | ASK any deviation | ASK plan deviation + 3-Strike | ASK conflicts only |
+| Plan approval | Required | Required | Required |
 
-### Implementation
-Spawn `spine_worker` subagent (gpt-5.3-codex, high effort).
-Worker reads plan.md, follows conventions.md, stops on conflicts.
+### Model routing
 
-### Quick edits (single file, <20 lines)
-Use gpt-5.3-codex-spark. Skip planning workflow entirely.
+| Phase | Model | Effort |
+|---|---|---|
+| Spec | gpt-5.4 | high |
+| Exploration (subagent) | gpt-5.4-mini | medium |
+| Planning | gpt-5.4 | high |
+| Implementation (default subagent) | gpt-5.4-mini | medium |
+| Implementation (complex subagent) | gpt-5-codex | medium |
+| Review (subagent) | gpt-5.4 | high |
+| Quick edit (no spine) | gpt-5.3-codex-spark | medium |
+| Deep arch decision | gpt-5.4 | xhigh |
 
-### Code review
-Spawn `spine_reviewer` subagent (gpt-5.4, high effort, read-only).
-Checks plan completion, convention compliance, constraint respect.
+### Delegation rules
+- Keep the workflow unchanged: `spine-spec` (optional) → `spine-pwf` → implementation → review
+- Main thread owns requirements, approvals, integration decisions, and final user communication
+- Skills do not change models; only explicit subagent delegation changes models
+- Agent `.toml` files only register available subagents; they do not auto-route work by themselves
+- Explicitly spawn `spine_worker_simple` for approved non-trivial implementation work
+- Escalate to `spine_worker_complex` only for cross-cutting, refactor-heavy, migration-like, or failure-prone phases
+- Keep `spine_worker` as a backward-compatible alias of the simple worker
+- Use `spine_explorer` only for read-heavy prep when extra research materially helps
+- Explicitly spawn `spine_reviewer` after implementation completes
+- Keep trivial edits on the main thread
+- Only one writing subagent at a time
+- If subagent tools are unavailable, continue on the main thread and state that fallback explicitly
 
-### Deep architecture decisions
-Use gpt-5.4 at reasoning effort xhigh. Log decision in conventions.md.
-
-## Autonomy (read from .spine/config.yaml)
-
-### autonomy: low
-- Never spawn subagents without explicit user request.
-- Present plan for approval before each phase.
-- Pause after each phase for user confirmation.
-- Never auto-promote conventions.
-
-### autonomy: med
-- Spawn spine_explorer during plan creation.
-- Present plan for user approval (single gate).
-- Execute phases without pausing after approval.
-- Spawn spine_reviewer after final phase.
-- Escalate on: convention conflicts, constraint violations, 3-strike errors.
-
-### autonomy: high
-- Auto-spawn exploration. Auto-approve plans if no conflicts.
-- Parallelize independent phases with spine_worker subagents.
-- Auto-promote conventions matching existing patterns.
-- Escalate only on: conflicts, 3-strike threshold, scope creep.
-
-## Convention Enforcement
-Before implementing, verify approach doesn't conflict with `.spine/conventions.md`.
-Flag conflicts explicitly — never silently deviate.
+### Execution rules (when spine is active)
+- SessionStart hook: load `.spine/project.md`, `.spine/conventions.md`, and active feature context on startup/resume
+- PreToolUse/PostToolUse hooks: Bash-scoped structured reminders in current Codex runtime
+- 2-Action Rule: update findings.md after every 2 read/search ops
+- 3-Strike errors: diagnose → alternative → rethink → escalate
+- Convention check: verify against `.spine/conventions.md`
 
 # <!-- END PROJECT SPINE -->

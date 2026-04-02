@@ -7,7 +7,6 @@ set -euo pipefail
 # Safe to run multiple times (idempotent).
 # ─────────────────────────────────────────────────────────────
 
-# Colors
 RED='\033[0;31m'
 GREEN='\033[0;32m'
 YELLOW='\033[1;33m'
@@ -16,6 +15,104 @@ NC='\033[0m'
 info()  { echo -e "${GREEN}[spine]${NC} $1"; }
 warn()  { echo -e "${YELLOW}[spine]${NC} $1"; }
 error() { echo -e "${RED}[spine]${NC} $1"; exit 1; }
+
+SPINE_CONFIG_BEGIN="# BEGIN PROJECT SPINE MANAGED INSTRUCTIONS"
+SPINE_CONFIG_END="# END PROJECT SPINE MANAGED INSTRUCTIONS"
+read -r -d '' SPINE_DEVELOPER_INSTRUCTIONS <<'EOF' || true
+developer_instructions = """
+Project Spine execution policy:
+- Main thread owns requirements, approvals, integration decisions, and final user communication.
+- Skills do not change models; only explicit subagent delegation changes models.
+- For approved non-trivial implementation work, explicitly spawn `spine_worker_simple`.
+- Escalate to `spine_worker_complex` only for cross-cutting, refactor-heavy, migration-like, or failure-prone phases.
+- Keep `spine_worker` as a backward-compatible alias of the simple worker.
+- Use `spine_explorer` only for read-heavy prep when extra research materially helps.
+- After implementation completes, explicitly spawn `spine_reviewer` for verification.
+- Keep trivial edits on the main thread.
+- Never run more than one writing subagent at once.
+- If subagent tools are unavailable, continue on the main thread and state that fallback explicitly.
+"""
+EOF
+
+ensure_codex_hooks_flag() {
+    local config_file="$1"
+    if [ -f "$config_file" ] && ! grep -q "codex_hooks" "$config_file" 2>/dev/null; then
+        if grep -q '^\[features\]' "$config_file" 2>/dev/null; then
+            awk '
+                BEGIN { inserted = 0 }
+                /^\[features\]/ {
+                    print
+                    if (!inserted) {
+                        print "codex_hooks = true"
+                        inserted = 1
+                    }
+                    next
+                }
+                { print }
+            ' "$config_file" > "$config_file.tmp"
+            mv "$config_file.tmp" "$config_file"
+        else
+            cat >> "$config_file" << 'TOML'
+
+[features]
+codex_hooks = true
+TOML
+        fi
+        info "Enabled codex hooks in: $config_file"
+    fi
+}
+
+ensure_spine_developer_instructions() {
+    local config_file="$1"
+    [ -f "$config_file" ] || return 0
+
+    local expected_block
+    expected_block=$(printf '%s\n%s\n%s\n' "$SPINE_CONFIG_BEGIN" "$SPINE_DEVELOPER_INSTRUCTIONS" "$SPINE_CONFIG_END")
+
+    if grep -qF "$SPINE_CONFIG_BEGIN" "$config_file" 2>/dev/null && grep -qF "$SPINE_CONFIG_END" "$config_file" 2>/dev/null; then
+        local current_block
+        current_block=$(sed -n "/^${SPINE_CONFIG_BEGIN}$/,/^${SPINE_CONFIG_END}$/p" "$config_file")
+        if [ "$current_block" = "$expected_block" ]; then
+            info "Project Spine developer instructions already current in: $config_file"
+            return 0
+        fi
+
+        awk -v begin="$SPINE_CONFIG_BEGIN" -v end="$SPINE_CONFIG_END" -v block="$expected_block" '
+            $0 == begin {
+                print block
+                skip = 1
+                next
+            }
+            $0 == end {
+                skip = 0
+                next
+            }
+            !skip { print }
+        ' "$config_file" > "$config_file.tmp"
+        mv "$config_file.tmp" "$config_file"
+        info "Updated Project Spine developer instructions in: $config_file"
+        return 0
+    fi
+
+    printf '\n%s' "$expected_block" >> "$config_file"
+    info "Added Project Spine developer instructions to: $config_file"
+}
+
+install_hooks_config() {
+    mkdir -p ".codex"
+
+    if [ -f ".codex/hooks/hooks.json" ]; then
+        rm -f ".codex/hooks/hooks.json"
+        info "Migrated legacy hook config path: .codex/hooks/hooks.json"
+    fi
+
+    if [ ! -f ".codex/hooks.json" ]; then
+        cp "$SCRIPT_DIR/hooks/hooks.json" ".codex/hooks.json"
+        info "Created: .codex/hooks.json"
+    else
+        warn ".codex/hooks.json already exists — skipping (review manually)"
+    fi
+}
 
 # ── Resolve the directory where this script lives ──
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -41,19 +138,16 @@ copy_if_missing() {
     fi
 }
 
-# Project-level files
 copy_if_missing "$SCRIPT_DIR/templates/.spine/project.md"      ".spine/project.md"
-copy_if_missing "$SCRIPT_DIR/templates/.spine/conventions.md"   ".spine/conventions.md"
-copy_if_missing "$SCRIPT_DIR/templates/.spine/progress.md"      ".spine/progress.md"
-copy_if_missing "$SCRIPT_DIR/templates/.spine/config.yaml"      ".spine/config.yaml"
+copy_if_missing "$SCRIPT_DIR/templates/.spine/conventions.md"  ".spine/conventions.md"
+copy_if_missing "$SCRIPT_DIR/templates/.spine/progress.md"     ".spine/progress.md"
+copy_if_missing "$SCRIPT_DIR/templates/.spine/config.yaml"     ".spine/config.yaml"
 
-# Active feature tracker
 if [ ! -f ".spine/active-feature" ]; then
     touch ".spine/active-feature"
     info "Created: .spine/active-feature"
 fi
 
-# Feature templates
 mkdir -p ".spine/features/_template"
 copy_if_missing "$SCRIPT_DIR/templates/.spine/features/_template/plan.md"     ".spine/features/_template/plan.md"
 copy_if_missing "$SCRIPT_DIR/templates/.spine/features/_template/findings.md" ".spine/features/_template/findings.md"
@@ -62,29 +156,21 @@ copy_if_missing "$SCRIPT_DIR/templates/.spine/features/_template/spec.md"     ".
 
 # ── Step 2: Copy Codex agent definitions ──
 mkdir -p ".codex/agents"
-copy_if_missing "$SCRIPT_DIR/.codex/agents/spine-explorer.toml" ".codex/agents/spine-explorer.toml"
-copy_if_missing "$SCRIPT_DIR/.codex/agents/spine-worker.toml"   ".codex/agents/spine-worker.toml"
-copy_if_missing "$SCRIPT_DIR/.codex/agents/spine-reviewer.toml" ".codex/agents/spine-reviewer.toml"
+copy_if_missing "$SCRIPT_DIR/.codex/agents/spine-explorer.toml"       ".codex/agents/spine-explorer.toml"
+copy_if_missing "$SCRIPT_DIR/.codex/agents/spine-worker-simple.toml"  ".codex/agents/spine-worker-simple.toml"
+copy_if_missing "$SCRIPT_DIR/.codex/agents/spine-worker-complex.toml" ".codex/agents/spine-worker-complex.toml"
+copy_if_missing "$SCRIPT_DIR/.codex/agents/spine-worker.toml"         ".codex/agents/spine-worker.toml"
+copy_if_missing "$SCRIPT_DIR/.codex/agents/spine-reviewer.toml"       ".codex/agents/spine-reviewer.toml"
 
 # ── Step 3: Copy Codex config.toml (merge if exists) ──
 if [ -f ".codex/config.toml" ]; then
-    # Check if spine agent config already present
-    if grep -q "spine" ".codex/config.toml" 2>/dev/null; then
-        warn ".codex/config.toml already contains spine config — skipping"
-    else
-        warn ".codex/config.toml exists — appending spine agent settings"
-        cat >> ".codex/config.toml" << 'TOML'
-
-# ── Project Spine settings ──
-[agents]
-max_threads = 4
-max_depth = 1
-TOML
-        info "Appended agent settings to .codex/config.toml"
-    fi
+    warn ".codex/config.toml exists — preserving user settings, patching Spine-managed block"
 else
     copy_if_missing "$SCRIPT_DIR/templates/.codex/config.toml" ".codex/config.toml"
 fi
+
+ensure_codex_hooks_flag ".codex/config.toml"
+ensure_spine_developer_instructions ".codex/config.toml"
 
 # ── Step 4: Copy skills ──
 mkdir -p ".agents/skills/spine-pwf"
@@ -94,51 +180,20 @@ copy_if_missing "$SCRIPT_DIR/.agents/skills/spine-spec/SKILL.md" ".agents/skills
 
 # ── Step 5: Copy hook scripts ──
 mkdir -p ".codex/hooks"
-for hook in pre-tool-use.sh post-tool-use.sh stop.sh; do
+for hook in session-start.sh pre-tool-use.sh post-tool-use.sh stop.sh; do
     if [ -f "$SCRIPT_DIR/hooks/$hook" ]; then
         cp "$SCRIPT_DIR/hooks/$hook" ".codex/hooks/$hook"
         chmod +x ".codex/hooks/$hook"
         info "Installed hook: .codex/hooks/$hook"
     fi
 done
-
-# Create hooks configuration for Codex
-if [ ! -f ".codex/hooks/hooks.json" ]; then
-    cat > ".codex/hooks/hooks.json" << 'JSON'
-{
-  "hooks": [
-    {
-      "type": "pre-tool-use",
-      "event": ["write", "edit", "shell", "read"],
-      "command": ".codex/hooks/pre-tool-use.sh",
-      "timeout": 5000
-    },
-    {
-      "type": "post-tool-use",
-      "event": ["write", "edit"],
-      "command": ".codex/hooks/post-tool-use.sh",
-      "timeout": 3000
-    },
-    {
-      "type": "stop",
-      "command": ".codex/hooks/stop.sh",
-      "timeout": 5000
-    }
-  ]
-}
-JSON
-    info "Created: .codex/hooks/hooks.json"
-else
-    warn ".codex/hooks/hooks.json already exists — skipping (review manually)"
-fi
+install_hooks_config
 
 # ── Step 6: Handle AGENTS.md ──
 AGENTS_TEMPLATE="$SCRIPT_DIR/templates/AGENTS.md"
 SPINE_BEGIN="<!-- BEGIN PROJECT SPINE -->"
-SPINE_END="<!-- END PROJECT SPINE -->"
 
 if [ -f "AGENTS.md" ]; then
-    # Check if spine section already exists
     if grep -q "$SPINE_BEGIN" "AGENTS.md" 2>/dev/null; then
         warn "AGENTS.md already contains Project Spine section — skipping"
     else
@@ -186,8 +241,9 @@ echo "    .spine/conventions.md      ← Edit: add your coding conventions"
 echo "    .spine/progress.md         ← Auto-updated as features complete"
 echo "    .spine/config.yaml         ← Set autonomy: low|med|high"
 echo "    .spine/features/_template/ ← Templates for per-feature files"
-echo "    .codex/agents/             ← Subagent definitions (explorer, worker, reviewer)"
-echo "    .codex/hooks/              ← PreToolUse, PostToolUse, Stop hooks"
+echo "    .codex/agents/             ← Subagent definitions (explorer, worker-simple, worker-complex, worker alias, reviewer)"
+echo "    .codex/hooks/              ← SessionStart, PreToolUse, PostToolUse, Stop hooks"
+echo "    .codex/hooks.json          ← Codex hook configuration"
 echo "    .agents/skills/            ← spine-pwf and spine-spec skills"
 echo "    AGENTS.md                  ← Workflow instructions for Codex"
 echo ""
@@ -196,5 +252,5 @@ echo "    1. Edit .spine/project.md with your project details"
 echo "    2. Edit .spine/conventions.md with your coding conventions"
 echo "    3. Run: codex"
 echo "    4. Try: \$spine-spec to define a feature"
-echo "    5. Or just describe a feature and the workflow activates automatically"
+echo "    5. Say: \$spine-pwf when you're ready to plan and implement"
 echo ""

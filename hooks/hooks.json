@@ -1,0 +1,52 @@
+{
+  "hooks": {
+    "SessionStart": [
+      {
+        "matcher": "startup|resume",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash -lc 'ROOT=$(git rev-parse --show-toplevel); \"$ROOT/.codex/hooks/session-start.sh\"'",
+            "timeout": 5
+          }
+        ]
+      }
+    ],
+    "PreToolUse": [
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash -lc 'ROOT=$(git rev-parse --show-toplevel); \"$ROOT/.codex/hooks/pre-tool-use.sh\"'",
+            "timeout": 5
+          }
+        ]
+      }
+    ],
+    "PostToolUse": [
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash -lc 'ROOT=$(git rev-parse --show-toplevel); \"$ROOT/.codex/hooks/post-tool-use.sh\"'",
+            "timeout": 5
+          }
+        ]
+      }
+    ],
+    "Stop": [
+      {
+        "matcher": ".*",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash -lc 'ROOT=$(git rev-parse --show-toplevel); \"$ROOT/.codex/hooks/stop.sh\"'",
+            "timeout": 5
+          }
+        ]
+      }
+    ]
+  }
+}
