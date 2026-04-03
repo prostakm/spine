@@ -1,5 +1,11 @@
 # Feature: {FEATURE_NAME}
 
+## Context
+- Project: `.spine/project.md`
+- Conventions: `.spine/conventions.md`
+- Progress: `.spine/progress.md`
+- Spec: `.spine/features/{slug}/spec.md` (if present)
+
 **Goal:** {what this delivers — one sentence, specific}
 
 **Approach:** {technical strategy + why — 1-2 sentences}
@@ -19,6 +25,7 @@ PLAN DETAIL:
 - Types/schemas: fields, types, purpose
 - Function signatures: params, returns, brief behavior
 - Pseudocode: non-trivial logic + error paths (skip boilerplate)
+- Context: point back to project.md, conventions.md, progress.md, spec.md
 - Edge cases with handling
 - Test cases by descriptive name
 - Verify command per phase (if phased)

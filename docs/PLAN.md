@@ -67,6 +67,9 @@ The deliverable is a repository that users clone/install into their projects.
 - **Status:** pending
 
 ### Phase 6: Subagent TOML definitions
+- [ ] Create `.codex/agents/spine-planner.toml`:
+      name, description, model=gpt-5.4, effort=high,
+      instructions for drafting/revising implementation-ready plan.md files
 - [ ] Create `.codex/agents/spine-explorer.toml`:
       name, description, model=gpt-5.4-mini, effort=medium,
       sandbox=read-only, instructions referencing .spine/ files
@@ -76,8 +79,6 @@ The deliverable is a repository that users clone/install into their projects.
 - [ ] Create `.codex/agents/spine-worker-complex.toml`:
       name, description, model=gpt-5-codex, effort=medium,
       instructions for complex or escalation implementation work
-- [ ] Create `.codex/agents/spine-worker.toml`:
-      backward-compatible alias of the simple worker
 - [ ] Create `.codex/agents/spine-reviewer.toml`:
       name, description, model=gpt-5.4, effort=high,
       sandbox=read-only, verification checklist instructions

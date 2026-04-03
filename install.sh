@@ -23,9 +23,9 @@ developer_instructions = """
 Project Spine execution policy:
 - Main thread owns requirements, approvals, integration decisions, and final user communication.
 - Skills do not change models; only explicit subagent delegation changes models.
+- Use `spine_planner` to draft or revise `plan.md` when spine planning is active.
 - For approved non-trivial implementation work, explicitly spawn `spine_worker_simple`.
 - Escalate to `spine_worker_complex` only for cross-cutting, refactor-heavy, migration-like, or failure-prone phases.
-- Keep `spine_worker` as a backward-compatible alias of the simple worker.
 - Use `spine_explorer` only for read-heavy prep when extra research materially helps.
 - After implementation completes, explicitly spawn `spine_reviewer` for verification.
 - Keep trivial edits on the main thread.
@@ -68,34 +68,43 @@ ensure_spine_developer_instructions() {
 
     local expected_block
     expected_block=$(printf '%s\n%s\n%s\n' "$SPINE_CONFIG_BEGIN" "$SPINE_DEVELOPER_INSTRUCTIONS" "$SPINE_CONFIG_END")
-
-    if grep -qF "$SPINE_CONFIG_BEGIN" "$config_file" 2>/dev/null && grep -qF "$SPINE_CONFIG_END" "$config_file" 2>/dev/null; then
-        local current_block
-        current_block=$(sed -n "/^${SPINE_CONFIG_BEGIN}$/,/^${SPINE_CONFIG_END}$/p" "$config_file")
-        if [ "$current_block" = "$expected_block" ]; then
-            info "Project Spine developer instructions already current in: $config_file"
-            return 0
-        fi
-
-        awk -v begin="$SPINE_CONFIG_BEGIN" -v end="$SPINE_CONFIG_END" -v block="$expected_block" '
-            $0 == begin {
+    awk -v begin="$SPINE_CONFIG_BEGIN" -v end="$SPINE_CONFIG_END" -v block="$expected_block" '
+        BEGIN {
+            skipping = 0
+            inserted = 0
+        }
+        $0 == begin {
+            skipping = 1
+            next
+        }
+        $0 == end {
+            skipping = 0
+            next
+        }
+        skipping { next }
+        !inserted && /^\[[^]]+\]/ {
+            print block
+            inserted = 1
+        }
+        { print }
+        END {
+            if (!inserted) {
+                if (NR > 0) {
+                    print ""
+                }
                 print block
-                skip = 1
-                next
             }
-            $0 == end {
-                skip = 0
-                next
-            }
-            !skip { print }
-        ' "$config_file" > "$config_file.tmp"
-        mv "$config_file.tmp" "$config_file"
-        info "Updated Project Spine developer instructions in: $config_file"
+        }
+    ' "$config_file" > "$config_file.tmp"
+
+    if cmp -s "$config_file" "$config_file.tmp"; then
+        rm -f "$config_file.tmp"
+        info "Project Spine developer instructions already current in: $config_file"
         return 0
     fi
 
-    printf '\n%s' "$expected_block" >> "$config_file"
-    info "Added Project Spine developer instructions to: $config_file"
+    mv "$config_file.tmp" "$config_file"
+    info "Updated Project Spine developer instructions in: $config_file"
 }
 
 install_hooks_config() {
@@ -156,21 +165,25 @@ copy_if_missing "$SCRIPT_DIR/templates/.spine/features/_template/spec.md"     ".
 
 # ── Step 2: Copy Codex agent definitions ──
 mkdir -p ".codex/agents"
+copy_if_missing "$SCRIPT_DIR/.codex/agents/spine-planner.toml"        ".codex/agents/spine-planner.toml"
 copy_if_missing "$SCRIPT_DIR/.codex/agents/spine-explorer.toml"       ".codex/agents/spine-explorer.toml"
 copy_if_missing "$SCRIPT_DIR/.codex/agents/spine-worker-simple.toml"  ".codex/agents/spine-worker-simple.toml"
 copy_if_missing "$SCRIPT_DIR/.codex/agents/spine-worker-complex.toml" ".codex/agents/spine-worker-complex.toml"
-copy_if_missing "$SCRIPT_DIR/.codex/agents/spine-worker.toml"         ".codex/agents/spine-worker.toml"
 copy_if_missing "$SCRIPT_DIR/.codex/agents/spine-reviewer.toml"       ".codex/agents/spine-reviewer.toml"
 
 # ── Step 3: Copy Codex config.toml (merge if exists) ──
+CONFIG_CREATED=0
 if [ -f ".codex/config.toml" ]; then
     warn ".codex/config.toml exists — preserving user settings, patching Spine-managed block"
 else
     copy_if_missing "$SCRIPT_DIR/templates/.codex/config.toml" ".codex/config.toml"
+    CONFIG_CREATED=1
 fi
 
 ensure_codex_hooks_flag ".codex/config.toml"
-ensure_spine_developer_instructions ".codex/config.toml"
+if [ "$CONFIG_CREATED" -eq 0 ]; then
+    ensure_spine_developer_instructions ".codex/config.toml"
+fi
 
 # ── Step 4: Copy skills ──
 mkdir -p ".agents/skills/spine-pwf"
@@ -241,7 +254,7 @@ echo "    .spine/conventions.md      ← Edit: add your coding conventions"
 echo "    .spine/progress.md         ← Auto-updated as features complete"
 echo "    .spine/config.yaml         ← Set autonomy: low|med|high"
 echo "    .spine/features/_template/ ← Templates for per-feature files"
-echo "    .codex/agents/             ← Subagent definitions (explorer, worker-simple, worker-complex, worker alias, reviewer)"
+echo "    .codex/agents/             ← Subagent definitions (planner, explorer, worker-simple, worker-complex, reviewer)"
 echo "    .codex/hooks/              ← SessionStart, PreToolUse, PostToolUse, Stop hooks"
 echo "    .codex/hooks.json          ← Codex hook configuration"
 echo "    .agents/skills/            ← spine-pwf and spine-spec skills"

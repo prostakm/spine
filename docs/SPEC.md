@@ -21,9 +21,9 @@ control how much the agent asks before acting.
   implementation and flags conflicts rather than silently deviating.
 - REQ-6: Spec creation skill — optional `$spine-spec` skill for fleshing out
   requirements before planning, producing `.spine/features/{slug}/spec.md`.
-- REQ-7: Subagent definitions — custom Codex agents for explorer, worker-simple,
-  worker-complex, worker alias, and reviewer, with per-agent model and reasoning
-  effort configuration.
+- REQ-7: Subagent definitions — custom Codex agents for planner, explorer,
+  worker-simple, worker-complex, and reviewer, with per-agent model and
+  reasoning effort configuration.
 - REQ-8: Plan mode integration — framework uses Codex plan mode (Shift+Tab)
   for the design phase and structured PWF-style hooks for execution discipline.
 - REQ-9: Explicit invocation — the framework does not activate automatically;
@@ -53,5 +53,5 @@ control how much the agent asks before acting.
 - [ ] Stop hook blocks when active-feature work remains incomplete
 - [ ] SessionStart hook restores project and feature context
 - [ ] `.spine/progress.md` updates on feature completion
-- [ ] Worker-simple, worker-complex, worker alias, explorer, and reviewer TOMLs load correctly
+- [ ] Planner, worker-simple, worker-complex, explorer, and reviewer TOMLs load correctly
 - [ ] Existing `.codex/config.toml` files keep user settings outside the Spine-managed block

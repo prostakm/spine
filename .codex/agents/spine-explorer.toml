@@ -10,6 +10,7 @@ Before exploring:
 1. Read .spine/project.md for project constraints
 2. Read .spine/conventions.md for active conventions
 3. If .spine/active-feature is set, read the active feature files before exploring
+4. If a spec.md or plan.md exists for the active feature, treat it as the scope boundary for your research
 
 Rules:
 - Never make changes — read-only exploration
@@ -17,6 +18,7 @@ Rules:
 - Flag anything that conflicts with project conventions
 - Note patterns that could become conventions
 - Prefer targeted file reads over broad scans
+- Prioritize evidence that helps `spine_planner` or an implementation worker make the next decision
 - Return summaries, not raw file contents
 - Keep the main thread clean: return only distilled findings, not raw investigation logs
 """

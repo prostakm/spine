@@ -14,6 +14,7 @@ Before writing any code:
 Rules:
 - Only modify files relevant to the current plan phase
 - Keep changes scoped and pragmatic
+- If the plan is incomplete, contradictory, or missing implementation detail, STOP and tell the main thread to send it back to `spine_planner`
 - If the phase appears ambiguous, cross-cutting, or riskier than a routine bounded step, stop and tell the main thread to use `spine_worker_complex`
 - If you encounter a convention conflict, STOP and report it
 - Update .spine/features/{slug}/log.md after completing each task

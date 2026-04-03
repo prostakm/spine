@@ -31,6 +31,7 @@ $spine-spec ──► STOP ──► $spine-pwf ──► STOP ──► impleme
 
 ### Plan detail
 - File paths, types/schemas, function signatures, pseudocode (non-trivial only)
+- `## Context` section pointing to project.md, conventions.md, progress.md, and spec.md
 - Edge cases, test case names, verify command
 - Phase split only when natural — single-plan is fine
 - See `docs/EXAMPLE-PLAN.md` for style
@@ -54,7 +55,7 @@ On `> [R]: APPROVED`: proceed to implementation.
 |---|---|---|
 | Spec | gpt-5.4 | high |
 | Exploration (subagent) | gpt-5.4-mini | medium |
-| Planning | gpt-5.4 | high |
+| Planning (`spine_planner`) | gpt-5.4 | high |
 | Implementation (default subagent) | gpt-5.4-mini | medium |
 | Implementation (complex subagent) | gpt-5-codex | medium |
 | Review (subagent) | gpt-5.4 | high |
@@ -66,9 +67,9 @@ On `> [R]: APPROVED`: proceed to implementation.
 - Main thread owns requirements, approvals, integration decisions, and final user communication
 - Skills do not change models; only explicit subagent delegation changes models
 - Agent `.toml` files only register available subagents; they do not auto-route work by themselves
+- Explicitly spawn `spine_planner` to draft or revise `plan.md` for non-trivial spine work
 - Explicitly spawn `spine_worker_simple` for approved non-trivial implementation work
 - Escalate to `spine_worker_complex` only for cross-cutting, refactor-heavy, migration-like, or failure-prone phases
-- Keep `spine_worker` as a backward-compatible alias of the simple worker
 - Use `spine_explorer` only for read-heavy prep when extra research materially helps
 - Explicitly spawn `spine_reviewer` after implementation completes
 - Keep trivial edits on the main thread
@@ -77,7 +78,8 @@ On `> [R]: APPROVED`: proceed to implementation.
 
 ### Execution rules (when spine is active)
 - SessionStart hook: load `.spine/project.md`, `.spine/conventions.md`, and active feature context on startup/resume
-- PreToolUse/PostToolUse hooks: Bash-scoped structured reminders in current Codex runtime
+- PreToolUse/PostToolUse hooks: emit structured Bash-scoped Spine reminders in current Codex runtime
+- Stop hook: block session exit until active feature work is actually marked complete
 - 2-Action Rule: update findings.md after every 2 read/search ops
 - 3-Strike errors: diagnose → alternative → rethink → escalate
 - Convention check: verify against `.spine/conventions.md`

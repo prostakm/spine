@@ -1,5 +1,11 @@
 # Feature: auth-session
 
+## Context
+- Project: `.spine/project.md`
+- Conventions: `.spine/conventions.md`
+- Progress: `.spine/progress.md`
+- Spec: `.spine/features/auth-session/spec.md`
+
 **Goal:** Session-based auth — login, logout, middleware. Server-side sessions in SQLite, httpOnly cookie.
 
 **Approach:** Sessions table + random token cookie. Server-side over JWT because sessions are instantly revocable and don't bloat cookies.

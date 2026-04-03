@@ -1,36 +1,57 @@
 #!/usr/bin/env bash
 # Project Spine: SessionStart hook
-# Loads project and active feature context at startup/resume.
+# Emits structured recovery context for startup/resume events.
+
+set -euo pipefail
 
 SPINE_DIR=".spine"
 ACTIVE_FILE="${SPINE_DIR}/active-feature"
 
-[ ! -d "$SPINE_DIR" ] && exit 0
+json_escape() {
+    local value="${1:-}"
+    value=${value//\\/\\\\}
+    value=${value//\"/\\\"}
+    value=${value//$'\n'/\\n}
+    value=${value//$'\r'/\\r}
+    value=${value//$'\t'/\\t}
+    printf '%s' "$value"
+}
 
-echo "Project Spine context:"
+emit_context() {
+    local message="$1"
+    [ -n "$message" ] || exit 0
+    printf '{"hookSpecificOutput":{"hookEventName":"SessionStart","additionalContext":"%s"}}\n' "$(json_escape "$message")"
+}
 
-for file in "${SPINE_DIR}/project.md" "${SPINE_DIR}/conventions.md" "${SPINE_DIR}/progress.md"; do
-    if [ -f "$file" ]; then
-        echo
-        echo "--- ${file} ---"
-        sed -n '1,40p' "$file"
-    fi
-done
+append_excerpt() {
+    local file="$1"
+    local max_lines="$2"
+    [ -f "$file" ] || return 0
+
+    local excerpt
+    excerpt="$(sed -n "1,${max_lines}p" "$file" 2>/dev/null || true)"
+    [ -n "$excerpt" ] || return 0
+
+    CONTEXT="${CONTEXT}--- ${file} ---"$'\n'"${excerpt}"$'\n\n'
+}
+
+[ -d "$SPINE_DIR" ] || exit 0
+
+CONTEXT="Project Spine session context"$'\n\n'
+
+append_excerpt "${SPINE_DIR}/project.md" 40
+append_excerpt "${SPINE_DIR}/conventions.md" 40
+append_excerpt "${SPINE_DIR}/progress.md" 40
 
 if [ -f "$ACTIVE_FILE" ]; then
-    SLUG=$(cat "$ACTIVE_FILE" 2>/dev/null | tr -d '[:space:]')
+    SLUG="$(tr -d '[:space:]' < "$ACTIVE_FILE" 2>/dev/null || true)"
     if [ -n "$SLUG" ]; then
-        for file in \
-            "${SPINE_DIR}/features/${SLUG}/spec.md" \
-            "${SPINE_DIR}/features/${SLUG}/plan.md" \
-            "${SPINE_DIR}/features/${SLUG}/findings.md" \
-            "${SPINE_DIR}/features/${SLUG}/log.md"
-        do
-            if [ -f "$file" ]; then
-                echo
-                echo "--- ${file} ---"
-                sed -n '1,40p' "$file"
-            fi
-        done
+        CONTEXT="${CONTEXT}Active feature: ${SLUG}"$'\n\n'
+        append_excerpt "${SPINE_DIR}/features/${SLUG}/spec.md" 40
+        append_excerpt "${SPINE_DIR}/features/${SLUG}/plan.md" 60
+        append_excerpt "${SPINE_DIR}/features/${SLUG}/findings.md" 40
+        append_excerpt "${SPINE_DIR}/features/${SLUG}/log.md" 40
     fi
 fi
+
+emit_context "$CONTEXT"

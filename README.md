@@ -85,27 +85,29 @@ autonomy: med  # low | med | high
 
 | Agent | Model | Purpose |
 |---|---|---|
+| `spine_planner` | gpt-5.4 (high) | Drafts or revises implementation-ready plans |
 | `spine_explorer` | gpt-5.4-mini (medium) | Read-only codebase research |
 | `spine_worker_simple` | gpt-5.4-mini (medium) | Default plan-scoped implementation |
 | `spine_worker_complex` | gpt-5-codex (medium) | Escalation worker for harder phases |
-| `spine_worker` | gpt-5.4-mini (medium) | Backward-compatible alias of the simple worker |
 | `spine_reviewer` | gpt-5.4 (high) | Post-implementation verification |
 
 Skills such as `$spine-spec` and `$spine-pwf` run on the main session model.
 Only explicit subagent delegation changes models.
 Subagent `.toml` files register available agents; the routing policy comes from the shipped instructions in `.codex/config.toml` and `AGENTS.md`.
+Typical flow: `spine_planner` drafts the plan, `spine_worker_simple` or `spine_worker_complex` executes approved phases, and `spine_reviewer` verifies the result.
 
 ### Hooks
 
 - **SessionStart**: Loads project, conventions, and active feature context on startup/resume
-- **PreToolUse / PostToolUse**: Bash-scoped structured reminders for active-plan discipline
-- **Stop**: Blocks until all phases are marked complete
+- **PreToolUse / PostToolUse**: Emit structured Bash-scoped reminders for active-plan discipline
+- **Stop**: Returns a blocking hook decision until all phases are marked complete
 
 ## Customization
 
 Edit `.spine/config.yaml` to change models:
 ```yaml
 models:
+  planning: { model: gpt-5.4, effort: high }
   implementation_simple: { model: gpt-5.4-mini, effort: medium }
   implementation_complex: { model: gpt-5-codex, effort: medium }
   review: { model: gpt-5.4, effort: high }
