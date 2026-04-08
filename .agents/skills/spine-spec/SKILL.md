@@ -62,9 +62,15 @@ Use explorer findings to make questions specific:
 ### Step 4: Create spec file
 - Slug (kebab-case) → `.spine/active-feature`
 - Write `.spine/features/{slug}/spec.md`
+- Include YAML frontmatter with `dependencies: []` and `dependents: []`
 - Tag the role used: `**Role:** product-owner` or `**Role:** architect`
 - Every requirement must be testable
 - Under 60 lines — if longer, split the feature
+- **Splitting**: if the feature is too complex or covers multiple concerns:
+  1. Keep the primary concern in the current feature
+  2. Create new feature dirs with spec.md containing YAML frontmatter `dependencies` referencing the current slug
+  3. Move split-off features to backlog: `scripts/spine-backlog.sh move <slug>`
+  4. The current feature's `dependents` list is auto-updated with backreferences
 - No implementation details
 
 ### Step 5: STOP (Gate 1)

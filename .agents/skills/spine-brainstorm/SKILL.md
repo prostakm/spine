@@ -92,6 +92,11 @@ Turn an idea into a short, approved design that is clear enough to hand off to
 ### 5. Write the spec
 - Consolidate the approved design into `## Spec` in spec.md
 - Keep the spec focused and testable; if it grows too large, split the feature
+- **Splitting**: if the feature covers multiple independent concerns, propose splitting:
+  1. Keep the primary concern in the current feature
+  2. Create new feature dirs with spec.md containing YAML frontmatter `dependencies` referencing the current slug
+  3. Move split-off features to backlog: `scripts/spine-backlog.sh move <slug>`
+  4. The current feature's `dependents` list is auto-updated with backreferences
 - Update `## Status` in spec.md:
   ```markdown
   ## Status

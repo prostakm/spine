@@ -43,6 +43,14 @@ The plan must include:
 Split into phases only when work has natural stages or dependencies.
 Single-phase plans are fine for focused tasks — don't add phases for ceremony.
 
+**Splitting features**: if the plan reveals the feature is too large or covers
+multiple concerns, propose splitting into smaller features:
+1. Keep the current feature focused on what's actionable now
+2. Create new feature dirs with spec.md containing YAML frontmatter `dependencies` referencing the current slug
+3. Move split-off features to backlog: `scripts/spine-backlog.sh move <slug>`
+4. The current feature's `dependents` list is auto-updated with backreferences
+5. Resume planning the current (now smaller) feature
+
 See `docs/EXAMPLE-PLAN.md` for the expected style — terse, no prose filler.
 
 ### Style

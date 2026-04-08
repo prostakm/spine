@@ -51,6 +51,45 @@ if [ -f "$ACTIVE_FILE" ]; then
         append_excerpt "${SPINE_DIR}/features/${SLUG}/plan.md" 60
         append_excerpt "${SPINE_DIR}/features/${SLUG}/findings.md" 40
         append_excerpt "${SPINE_DIR}/features/${SLUG}/log.md" 40
+
+        BACKLOG_DIR="${SPINE_DIR}/features/backlog"
+        SPEC_FILE="${SPINE_DIR}/features/${SLUG}/spec.md"
+        if [ -f "$SPEC_FILE" ] && [ -d "$BACKLOG_DIR" ]; then
+            BACKLOG_WARNINGS=""
+            in_front=false
+            in_deps=false
+            while IFS= read -r line; do
+                if [[ "$line" == "---" ]]; then
+                    if [ "$in_front" = true ]; then
+                        break
+                    fi
+                    in_front=true
+                    continue
+                fi
+                if [ "$in_front" = true ] && [[ "$line" == "dependencies:"* ]]; then
+                    in_deps=true
+                    val="${line#*:}"
+                    val="${val// /}"
+                    if [ "$val" != "[]" ] && [ -n "$val" ] && [ -d "$BACKLOG_DIR/$val" ]; then
+                        BACKLOG_WARNINGS="${BACKLOG_WARNINGS}  - ${val} (in backlog)"$'\n'
+                    fi
+                    continue
+                fi
+                if [ "$in_deps" = true ] && [[ "$line" =~ ^[[:space:]]+-[[:space:]]+(.*) ]]; then
+                    dep="${BASH_REMATCH[1]}"
+                    if [ -d "$BACKLOG_DIR/$dep" ]; then
+                        BACKLOG_WARNINGS="${BACKLOG_WARNINGS}  - ${dep} (in backlog)"$'\n'
+                    fi
+                    continue
+                fi
+                if [ "$in_deps" = true ] && ! [[ "$line" =~ ^[[:space:]]+- ]]; then
+                    in_deps=false
+                fi
+            done < "$SPEC_FILE"
+            if [ -n "$BACKLOG_WARNINGS" ]; then
+                CONTEXT="${CONTEXT}WARNING: Active feature has dependencies in backlog:"$'\n'"${BACKLOG_WARNINGS}"$'\n'
+            fi
+        fi
     fi
 fi
 

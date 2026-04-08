@@ -1,3 +1,8 @@
+---
+dependencies: []
+dependents: []
+---
+
 # Spec: {FEATURE_NAME}
 
 **Role:** {product-owner | architect}
@@ -18,9 +23,6 @@
 
 ## Constraints
 - {from .spine/project.md or feature-specific}
-
-## Dependencies
-- {from .spine/progress.md, or "none"}
 
 ## Acceptance Criteria
 - [ ] {testable criterion}
