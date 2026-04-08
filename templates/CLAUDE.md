@@ -29,7 +29,6 @@ All planning artifacts live in `.spine/features/{slug}/`.
 
 ### During execution
 - `plan.md` is the source of truth for what to do next.
-- The PreToolUse hook enforces the review gate before implementation edits.
 - Keep `## Current Slice`, `## Execution Slices`, and `## State` up to date as work progresses.
 - Create `findings.md` or `log.md` only when the extra artifact adds real handoff value.
 

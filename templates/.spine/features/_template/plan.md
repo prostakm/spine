@@ -46,3 +46,9 @@ See docs/EXAMPLE-PLAN.md for style reference.
 |-------|---------|------------|
 
 <!-- REVIEW: PENDING — add > [R]: comments inline, mark > [R]: APPROVED when done -->
+
+## Review Gate
+- Status: pending
+
+## State
+- Phase: planning

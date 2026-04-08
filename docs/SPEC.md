@@ -21,22 +21,19 @@ control how much the agent asks before acting.
   implementation and flags conflicts rather than silently deviating.
 - REQ-6: Spec creation skill — optional `$spine-spec` skill for fleshing out
   requirements before planning, producing `.spine/features/{slug}/spec.md`.
-- REQ-7: Subagent definitions — custom Codex agents for planner, explorer,
-  worker-simple, worker-complex, and reviewer, with per-agent model and
-  reasoning effort configuration.
-- REQ-8: Plan mode integration — framework uses Codex plan mode (Shift+Tab)
+- REQ-7: Plan mode integration — framework uses Codex plan mode (Shift+Tab)
   for the design phase and structured PWF-style hooks for execution discipline.
 - REQ-9: Explicit invocation — the framework does not activate automatically;
   users invoke `$spine-spec` or `$spine-pwf` when they want the workflow.
-- REQ-10: Inspired by PWF — planning workflow uses PWF's proven patterns
+- REQ-9: Inspired by PWF — planning workflow uses PWF's proven patterns
   (3 files, hooks, 2-Action Rule, 3-Strike Protocol) reimplemented for
   `.spine/` directory structure without runtime dependency on PWF.
-- REQ-11: Install/update scripts — `install.sh` and `update.sh` bootstrap or
+- REQ-10: Install/update scripts — `install.sh` and `update.sh` bootstrap or
   refresh the framework, copy files, patch AGENTS.md, and manage Codex config.
 
 ## Out of Scope
 
-- Multi-agent orchestration beyond Codex's native subagent system
+- Multi-agent orchestration
 - XML plan formats, requirement IDs, traceability matrices
 - Sprint ceremonies, story points, agile methodology
 - Custom CLI commands or binaries
@@ -53,5 +50,4 @@ control how much the agent asks before acting.
 - [ ] Stop hook blocks when active-feature work remains incomplete
 - [ ] SessionStart hook restores project and feature context
 - [ ] `.spine/progress.md` updates on feature completion
-- [ ] Planner, worker-simple, worker-complex, explorer, and reviewer TOMLs load correctly
-- [ ] Existing `.codex/config.toml` files keep user settings outside the Spine-managed block
+- [ ] Existing `.codex/config.toml` files keep user settings

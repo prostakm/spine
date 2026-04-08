@@ -1,5 +1,5 @@
 // Project Spine — OpenCode plugin
-// Enforces the plan review gate before edits and keeps plan.md authoritative after writes.
+// Enforces the plan review gate before edits and surfaces context on session start.
 // Installed to .opencode/plugins/spine.js in your project by install.sh.
 
 import { readFileSync, existsSync } from "fs"
@@ -128,25 +128,6 @@ export const SpinePlugin = async ({ directory }) => {
         throw new Error(
           `[spine] Plan review gate is pending for '${slug}'. ` +
           `Only read-only commands are allowed until approval is recorded in ${plan}.`
-        )
-      }
-    },
-
-    // After writes — remind to keep plan.md in sync
-    "tool.execute.after": async (input) => {
-      const tool = input?.tool ?? ""
-      if (!["write", "edit", "apply_patch", "multipatch"].includes(tool)) return
-
-      const slug = readSlug(root)
-      if (!slug) return
-
-      const plan = planPath(root, slug)
-      const content = readPlan(plan)
-      if (!content) return
-
-      if (planIsApproved(content)) {
-        console.log(
-          `[spine] ${slug}: update ${plan} — Current Slice, Execution Slices, and State.`
         )
       }
     },

@@ -149,6 +149,12 @@ func StartCleanup(ctx, repo, interval)
 
 ---
 
+## Review Gate
+- Status: pending
+
+## State
+- Phase: planning
+
 ## Decisions
 | Decision | Date | Rationale |
 |----------|------|-----------|

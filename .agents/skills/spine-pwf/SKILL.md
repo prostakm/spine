@@ -25,8 +25,8 @@ SPEC (opt) ──► STOP ──► PLAN ──► STOP ──► IMPLEMENT ─�
 ## Plan Creation
 
 ### Planner ownership
-- Use `spine_planner` to draft or revise `.spine/features/{slug}/plan.md` for any non-trivial feature
-- Use `spine_explorer` first only when targeted read-only research will materially improve the plan
+- Draft or revise `.spine/features/{slug}/plan.md` for any non-trivial feature on the main thread
+- Use targeted read-only research when it will materially improve the plan
 - Keep the main thread responsible for approvals, tradeoff explanations, and the plan gate
 
 ### Detail requirements
@@ -73,7 +73,7 @@ func Login(w, r)
 
 ### On "address comments" / "apply review":
 1. Find all `> [R]:` lines (not marked ✓)
-2. Change requests → revise the plan, preferably through `spine_planner`
+2. Change requests → revise the plan
 3. Questions → answer as `> [A]: response`
 4. Mark done: `> [R]: ✓ original`
 5. Changes made → STOP for re-review
@@ -83,18 +83,13 @@ func Login(w, r)
 
 1. Work through phases sequentially
 2. Keep user-facing workflow unchanged: implementation still happens inside this skill after plan approval
-3. Agent `.toml` files only register available subagents; they do not auto-route work by themselves
-4. If the approved plan is incomplete or contradicted by the codebase, STOP, send it back to `spine_planner`, and re-approve before coding
-5. For approved non-trivial implementation work, explicitly spawn `spine_worker_simple` by default
-6. Escalate to `spine_worker_complex` only when the current phase is cross-cutting, refactor-heavy, migration-like, or has already hit significant implementation trouble
-7. Use `spine_explorer` only for read-heavy prep or architecture lookup when extra research materially helps, then summarize findings back into the main thread
-8. Keep trivial edits, integration decisions, and user communication on the main thread
-9. Never run more than one writing subagent at once
-10. SessionStart, PreToolUse, and PostToolUse hooks emit structured Spine context in current Codex
-11. **2-Action Rule**: after every 2 view/search/read ops → update findings.md
-12. On phase completion: mark [x], status `complete`, update log.md, run Verify
-13. After implementation, explicitly spawn `spine_reviewer` for verification, or review manually if subagents are unavailable; state the fallback explicitly
-14. **3-Strike errors**: diagnose → alternative → rethink → escalate
+3. If the approved plan is incomplete or contradicted by the codebase, STOP and revise before coding
+4. Keep trivial edits, integration decisions, and user communication on the main thread
+5. SessionStart hook emits structured Spine context in current Codex session
+6. **2-Action Rule**: after every 2 view/search/read ops → update findings.md
+7. On phase completion: mark [x], status `complete`, update log.md, run Verify
+8. After implementation, review manually or escalate to user
+9. **3-Strike errors**: diagnose → alternative → rethink → escalate to user
 
 ### Decision questions during implementation
 - **low**: ask before unplanned files, alternatives, any deviation
@@ -103,7 +98,7 @@ func Login(w, r)
 
 ## Completion
 1. All phases complete
-2. Review (explicitly spawn `spine_reviewer` or review manually)
+2. Review manually or escalate to user
 3. Update `.spine/progress.md` → `done`
 4. Present findings.md `## Promote to Project` candidates
 

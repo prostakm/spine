@@ -66,31 +66,12 @@ The deliverable is a repository that users clone/install into their projects.
       explicit invocation only
 - **Status:** pending
 
-### Phase 6: Subagent TOML definitions
-- [ ] Create `.codex/agents/spine-planner.toml`:
-      name, description, model=gpt-5.4, effort=high,
-      instructions for drafting/revising implementation-ready plan.md files
-- [ ] Create `.codex/agents/spine-explorer.toml`:
-      name, description, model=gpt-5.4-mini, effort=medium,
-      sandbox=read-only, instructions referencing .spine/ files
-- [ ] Create `.codex/agents/spine-worker-simple.toml`:
-      name, description, model=gpt-5.4-mini, effort=medium,
-      instructions for routine plan-scoped implementation
-- [ ] Create `.codex/agents/spine-worker-complex.toml`:
-      name, description, model=gpt-5-codex, effort=medium,
-      instructions for complex or escalation implementation work
-- [ ] Create `.codex/agents/spine-reviewer.toml`:
-      name, description, model=gpt-5.4, effort=high,
-      sandbox=read-only, verification checklist instructions
-- **Status:** pending
-
 ### Phase 7: AGENTS.md template
 - [ ] Create `templates/AGENTS.md` with:
       - explicit invocation rules
       - workflow section with hard gates
       - model routing section (per-phase model × effort)
       - autonomy levels section (low/med/high behaviors)
-      - delegation rules for simple/complex workers
       - execution rules for structured hooks
 - [ ] Ensure it stays under 32KB (Codex project_doc_max_bytes default)
 - [ ] Include markers for install script to merge with existing AGENTS.md
@@ -99,9 +80,7 @@ The deliverable is a repository that users clone/install into their projects.
 ### Phase 8: Config.toml template
 - [ ] Create `templates/.codex/config.toml` with:
       - Main session model setting
-      - Spine-managed developer instructions block
       - Hooks feature flag
-      - Subagent limits (max_threads, max_depth)
 - **Status:** pending
 
 ### Phase 9: Install and update scripts
@@ -109,19 +88,16 @@ The deliverable is a repository that users clone/install into their projects.
       copies framework files without overwriting user project files,
       installs structured hooks at `.codex/hooks/`,
       writes matcher-based config to `.codex/hooks.json`,
-      patches `.codex/config.toml` with the Spine-managed block,
       and stages framework files
 - [ ] Create `update.sh`:
       refreshes framework files in place,
-      adds worker-simple/complex definitions,
-      migrates legacy `.codex/hooks/hooks.json` to `.codex/hooks.json`,
-      and refreshes the managed config block
+      migrates legacy `.codex/hooks/hooks.json` to `.codex/hooks.json`
 - [ ] Make both scripts idempotent
 - **Status:** pending
 
 ### Phase 10: Documentation and README
 - [ ] Write README.md: what, why, quickstart, file layout, autonomy levels
-- [ ] Keep docs aligned with explicit invocation, worker split, and structured hooks
+- [ ] Keep docs aligned with explicit invocation and structured hooks
 - [ ] Add LICENSE (MIT)
 - **Status:** pending
 

@@ -1,16 +1,2 @@
 # Project Spine configuration
 autonomy: med  # low | med | high
-
-# Model preferences (override defaults in .codex/agents/*.toml)
-models:
-  planning: { model: gpt-5.4, effort: high }
-  exploration: { model: gpt-5.4-mini, effort: medium }
-  implementation_simple: { model: gpt-5.4-mini, effort: medium }
-  implementation_complex: { model: gpt-5-codex, effort: medium }
-  review: { model: gpt-5.4, effort: high }
-  quick_edit: { model: gpt-5.3-codex-spark, effort: medium }
-  deep_decision: { model: gpt-5.4, effort: xhigh }
-
-agents:
-  max_threads: 4
-  max_depth: 1

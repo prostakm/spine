@@ -12,7 +12,7 @@ allow_implicit_invocation: false
 
 ### Step 1: Context + codebase research
 - Read `.spine/project.md`, `.spine/conventions.md`, `.spine/progress.md`
-- Spawn `spine_explorer` to scan codebase for:
+- Scan codebase for:
   - Existing code related to the feature area
   - Patterns already established (auth, API style, data access)
   - Potential conflicts or integration points

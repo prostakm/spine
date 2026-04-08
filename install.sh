@@ -43,6 +43,7 @@ copy_if_missing() {
 
 sync_managed_file() {
     local src="$1" dst="$2"
+    [ -f "$src" ] || return 0
     mkdir -p "$(dirname "$dst")"
 
     if [ ! -f "$dst" ]; then
@@ -224,6 +225,29 @@ remove_legacy_spine_config_block() {
     fi
 }
 
+remove_legacy_managed_instructions_block() {
+    local file="$1"
+    [ -f "$file" ] || return 0
+
+    local tmp
+    tmp="$(mktemp)"
+
+    awk '
+        /^# Subagent limits[[:space:]]*$/ { next }
+        /^# BEGIN PROJECT SPINE MANAGED INSTRUCTIONS$/ { skip = 1; next }
+        skip && /^# END PROJECT SPINE MANAGED INSTRUCTIONS$/ { skip = 0; next }
+        skip { next }
+        { print }
+    ' "$file" > "$tmp"
+
+    if ! cmp -s "$file" "$tmp"; then
+        mv "$tmp" "$file"
+        info "Removed legacy managed instructions block from $file"
+    else
+        rm -f "$tmp"
+    fi
+}
+
 remove_legacy_yaml_section() {
     local file="$1" section="$2"
     [ -f "$file" ] || return 0
@@ -391,9 +415,7 @@ for event in ("PreToolUse", "PostToolUse", "Stop"):
 root_cmd = "bash -lc 'ROOT=$(git rev-parse --show-toplevel 2>/dev/null); [ -n \"$ROOT\" ] && \"$ROOT/.codex/hooks/{hook}\"'"
 
 spine_entries = {
-    "PreToolUse":  {"matcher": "Write|Edit|MultiEdit|Bash",  "hooks": [{"type": "command", "command": root_cmd.format(hook="pre-tool-use.sh")}]},
-    "PostToolUse": {"matcher": "Write|Edit|MultiEdit",       "hooks": [{"type": "command", "command": root_cmd.format(hook="post-tool-use.sh")}]},
-    "Stop":        {"matcher": ".*",                         "hooks": [{"type": "command", "command": root_cmd.format(hook="stop.sh")}]},
+    "Stop": {"matcher": ".*", "hooks": [{"type": "command", "command": root_cmd.format(hook="stop.sh")}]},
 }
 
 for event, entry in spine_entries.items():
@@ -504,6 +526,7 @@ TOML
 if [ -f ".codex/config.toml" ]; then
     remove_legacy_toml_agents_block ".codex/config.toml"
     remove_legacy_spine_config_block ".codex/config.toml"
+    remove_legacy_managed_instructions_block ".codex/config.toml"
     upsert_marked_block ".codex/config.toml" "$SPINE_CONFIG_BLOCK_BEGIN" "$SPINE_CONFIG_BLOCK_END" "$SPINE_CONFIG_BLOCK_FILE"
     info "Updated managed Spine block in .codex/config.toml"
 else
@@ -521,7 +544,7 @@ sync_managed_file "$SCRIPT_DIR/.agents/skills/spine-spec/SKILL.md" ".agents/skil
 
 # ── Step 4: Copy hook scripts ──
 mkdir -p ".codex/hooks"
-for hook in session-start.sh pre-tool-use.sh post-tool-use.sh stop.sh; do
+for hook in session-start.sh stop.sh; do
     if [ -f "$SCRIPT_DIR/hooks/$hook" ]; then
         sync_managed_file "$SCRIPT_DIR/hooks/$hook" ".codex/hooks/$hook"
         chmod +x ".codex/hooks/$hook"
@@ -556,13 +579,13 @@ else
 fi
 
 # ── Step 6: Remove stale files from older Spine installations ──
-remove_if_exists ".codex/agents/spine-explorer.toml"
-remove_if_exists ".codex/agents/spine-worker.toml"
-remove_if_exists ".codex/agents/spine-reviewer.toml"
+for f in .codex/agents/spine-*.toml; do
+    [ -f "$f" ] && rm -f "$f" && info "Removed: $f"
+done
 remove_empty_dir ".codex/agents"
 remove_if_exists ".codex/hooks.json.bak"
 remove_if_exists ".codex/hooks/hooks.json.bak"
-remove_if_exists ".spine/scripts/validate-plan.sh.bak"
+
 remove_if_exists ".agents/skills/spine-explorer"
 remove_if_exists ".agents/skills/spine-worker"
 remove_if_exists ".agents/skills/spine-reviewer"
@@ -574,6 +597,8 @@ remove_if_exists ".codex/hooks/stop"
 remove_if_exists ".codex/hooks/session-start"
 remove_if_exists ".codex/hooks/pre-tool-use.old"
 remove_if_exists ".codex/hooks/post-tool-use.old"
+remove_if_exists ".codex/hooks/pre-tool-use.sh"
+remove_if_exists ".codex/hooks/post-tool-use.sh"
 remove_if_exists ".codex/hooks/stop.old"
 remove_if_exists ".codex/hooks/session-start.old"
 remove_if_exists ".codex/hooks/pre_tool_use.sh"
@@ -648,23 +673,21 @@ echo "    .spine/conventions.md      ← Edit: add your coding conventions"
 echo "    .spine/progress.md         ← Auto-updated as features complete"
 echo "    .spine/config.yaml         ← Set autonomy: low|med|high"
 echo "    .spine/features/_template/ ← Spec, plan, and optional findings/log templates"
-echo "    .spine/scripts/            ← Plan validation helper"
 echo "    .codex/config.toml         ← Main-session Codex defaults"
 echo "    .codex/hooks.json          ← Codex hook configuration"
-echo "    .codex/hooks/              ← SessionStart, PreToolUse, PostToolUse, Stop hooks"
+echo "    .codex/hooks/              ← SessionStart and Stop hooks"
 echo "    .agents/skills/            ← spine-brainstorm, spine-pwf, and spine-spec (Codex)"
 echo "    AGENTS.md                  ← Workflow instructions for Codex and OpenCode"
 echo "    .claude/skills/            ← spine-brainstorm, spine-pwf, and spine-spec (Claude Code)"
-echo "    .claude/settings.json      ← PreToolUse, PostToolUse, Stop hooks for Claude Code"
+echo "    .claude/settings.json      ← Stop hook for Claude Code"
 echo "    CLAUDE.md                  ← Workflow instructions for Claude Code"
-echo "    .opencode/plugins/spine.js ← PreToolUse, PostToolUse, SessionStart hooks (OpenCode)"
+echo "    .opencode/plugins/spine.js ← Review gate enforcement and SessionStart (OpenCode)"
 echo "    opencode.json              ← OpenCode config (plugin reference + AGENTS.md natively)"
 echo ""
 echo "  Next steps:"
 echo "    1. Edit .spine/project.md with your project details"
 echo "    2. Edit .spine/conventions.md with your coding conventions"
-echo "    3. Use .spine/scripts/validate-plan.sh on approved plans"
-echo "    4. Codex:       run 'codex'      — use \$spine-brainstorm to start a feature"
-echo "    5. Claude Code: run 'claude'     — use /spine-brainstorm to start a feature"
-echo "    6. OpenCode:    run 'opencode'   — reads AGENTS.md automatically"
+echo "    3. Codex:       run 'codex'      — use \$spine-brainstorm to start a feature"
+echo "    4. Claude Code: run 'claude'     — use /spine-brainstorm to start a feature"
+echo "    5. OpenCode:    run 'opencode'   — reads AGENTS.md automatically"
 echo ""

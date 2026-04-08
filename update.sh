@@ -17,24 +17,6 @@ warn()  { echo -e "${YELLOW}[spine]${NC} $1"; }
 skip()  { echo -e "${CYAN}[spine]${NC} $1"; }
 error() { echo -e "${RED}[spine]${NC} $1"; exit 1; }
 
-SPINE_CONFIG_BEGIN="# BEGIN PROJECT SPINE MANAGED INSTRUCTIONS"
-SPINE_CONFIG_END="# END PROJECT SPINE MANAGED INSTRUCTIONS"
-read -r -d '' SPINE_DEVELOPER_INSTRUCTIONS <<'EOF' || true
-developer_instructions = """
-Project Spine execution policy:
-- Main thread owns requirements, approvals, integration decisions, and final user communication.
-- Skills do not change models; only explicit subagent delegation changes models.
-- Use `spine_planner` to draft or revise `plan.md` when spine planning is active.
-- For approved non-trivial implementation work, explicitly spawn `spine_worker_simple`.
-- Escalate to `spine_worker_complex` only for cross-cutting, refactor-heavy, migration-like, or failure-prone phases.
-- Use `spine_explorer` only for read-heavy prep when extra research materially helps.
-- After implementation completes, explicitly spawn `spine_reviewer` for verification.
-- Keep trivial edits on the main thread.
-- Never run more than one writing subagent at once.
-- If subagent tools are unavailable, continue on the main thread and state that fallback explicitly.
-"""
-EOF
-
 ensure_codex_hooks_flag() {
     local config_file="$1"
     if [ -f "$config_file" ] && ! grep -q "codex_hooks" "$config_file" 2>/dev/null; then
@@ -61,51 +43,6 @@ TOML
         fi
         info "Enabled codex hooks in: $config_file"
     fi
-}
-
-ensure_spine_developer_instructions() {
-    local config_file="$1"
-    [ -f "$config_file" ] || return 0
-
-    local expected_block
-    expected_block=$(printf '%s\n%s\n%s\n' "$SPINE_CONFIG_BEGIN" "$SPINE_DEVELOPER_INSTRUCTIONS" "$SPINE_CONFIG_END")
-    awk -v begin="$SPINE_CONFIG_BEGIN" -v end="$SPINE_CONFIG_END" -v block="$expected_block" '
-        BEGIN {
-            skipping = 0
-            inserted = 0
-        }
-        $0 == begin {
-            skipping = 1
-            next
-        }
-        $0 == end {
-            skipping = 0
-            next
-        }
-        skipping { next }
-        !inserted && /^\[[^]]+\]/ {
-            print block
-            inserted = 1
-        }
-        { print }
-        END {
-            if (!inserted) {
-                if (NR > 0) {
-                    print ""
-                }
-                print block
-            }
-        }
-    ' "$config_file" > "$config_file.tmp"
-
-    if cmp -s "$config_file" "$config_file.tmp"; then
-        rm -f "$config_file.tmp"
-        skip "Unchanged: $config_file (Project Spine developer instructions)"
-        return 0
-    fi
-
-    mv "$config_file.tmp" "$config_file"
-    info "Updated: $config_file (Project Spine developer instructions)"
 }
 
 install_hooks_config() {
@@ -151,19 +88,6 @@ update_file() {
         skip "Unchanged: $dst"
     fi
 }
-
-echo -e "\n${GREEN}── Subagents ──${NC}"
-mkdir -p ".codex/agents"
-update_file "$SCRIPT_DIR/.codex/agents/spine-planner.toml"        ".codex/agents/spine-planner.toml"
-update_file "$SCRIPT_DIR/.codex/agents/spine-explorer.toml"       ".codex/agents/spine-explorer.toml"
-update_file "$SCRIPT_DIR/.codex/agents/spine-worker-simple.toml"  ".codex/agents/spine-worker-simple.toml"
-update_file "$SCRIPT_DIR/.codex/agents/spine-worker-complex.toml" ".codex/agents/spine-worker-complex.toml"
-update_file "$SCRIPT_DIR/.codex/agents/spine-reviewer.toml"       ".codex/agents/spine-reviewer.toml"
-
-if [ -f ".codex/agents/spine-worker.toml" ]; then
-    rm -f ".codex/agents/spine-worker.toml"
-    info "Removed: .codex/agents/spine-worker.toml"
-fi
 
 echo -e "\n${GREEN}── Hooks ──${NC}"
 mkdir -p ".codex/hooks"
@@ -231,7 +155,6 @@ for f in project.md conventions.md progress.md config.yaml; do
 done
 [ ! -f ".spine/active-feature" ] && touch ".spine/active-feature"
 ensure_codex_hooks_flag ".codex/config.toml"
-ensure_spine_developer_instructions ".codex/config.toml"
 
 echo ""
 echo -e "${GREEN}╭──────────────────────────────────────────╮${NC}"

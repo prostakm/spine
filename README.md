@@ -26,8 +26,7 @@ cd your-project
 
 The install script:
 - Creates `.spine/` with project tracking files and feature templates
-- Installs Codex skills, hooks, and subagent definitions
-- Adds a Spine-managed `developer_instructions` block to `.codex/config.toml`
+- Installs Codex skills and hooks
 - Creates or extends `AGENTS.md`
 
 ## Quick Start
@@ -81,21 +80,6 @@ Set in `.spine/config.yaml`:
 autonomy: med  # low | med | high
 ```
 
-### Subagents
-
-| Agent | Model | Purpose |
-|---|---|---|
-| `spine_planner` | gpt-5.4 (high) | Drafts or revises implementation-ready plans |
-| `spine_explorer` | gpt-5.4-mini (medium) | Read-only codebase research |
-| `spine_worker_simple` | gpt-5.4-mini (medium) | Default plan-scoped implementation |
-| `spine_worker_complex` | gpt-5-codex (medium) | Escalation worker for harder phases |
-| `spine_reviewer` | gpt-5.4 (high) | Post-implementation verification |
-
-Skills such as `$spine-spec` and `$spine-pwf` run on the main session model.
-Only explicit subagent delegation changes models.
-Subagent `.toml` files register available agents; the routing policy comes from the shipped instructions in `.codex/config.toml` and `AGENTS.md`.
-Typical flow: `spine_planner` drafts the plan, `spine_worker_simple` or `spine_worker_complex` executes approved phases, and `spine_reviewer` verifies the result.
-
 ### Hooks
 
 - **SessionStart**: Loads project, conventions, and active feature context on startup/resume
@@ -104,17 +88,7 @@ Typical flow: `spine_planner` drafts the plan, `spine_worker_simple` or `spine_w
 
 ## Customization
 
-Edit `.spine/config.yaml` to change models:
-```yaml
-models:
-  planning: { model: gpt-5.4, effort: high }
-  implementation_simple: { model: gpt-5.4-mini, effort: medium }
-  implementation_complex: { model: gpt-5-codex, effort: medium }
-  review: { model: gpt-5.4, effort: high }
-```
-
-Edit `.codex/agents/*.toml` to customize subagent behavior.
-Edit the Project Spine managed block in `.codex/config.toml` to change the default delegation policy.
+Edit `.spine/config.yaml` to set autonomy level and other preferences.
 
 ## License
 
