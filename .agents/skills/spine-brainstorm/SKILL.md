@@ -111,3 +111,8 @@ Turn an idea into a short, approved design that is clear enough to hand off to
 - Record the chosen approach explicitly
 - Leave no open design question that would force `plan.md` to invent behavior
 - All Q&A, approaches, and design drafts are persisted incrementally
+
+## Cleanup (mid-brainstorm reset)
+If user wants to abandon or restart brainstorming:
+- Run `.spine/scripts/cleanup-features.sh reset <slug>` to remove feature dir and clear active
+- User can then start fresh with `$spine-brainstorm`

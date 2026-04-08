@@ -101,6 +101,13 @@ func Login(w, r)
 2. Review manually or escalate to user
 3. Update `.spine/progress.md` → `done`
 4. Present findings.md `## Promote to Project` candidates
+5. Clear `.spine/active-feature` (write empty or remove file)
+
+## Cleanup (mid-flow reset)
+If user wants to start over or abandon current feature:
+- Run `.spine/scripts/cleanup-features.sh reset <slug>` to remove feature dir and clear active
+- Or `.spine/scripts/cleanup-features.sh clear-active` to just clear active marker
+- User can then invoke `$spine-spec` or `$spine-pwf` for a new feature
 
 ## Session Recovery
 1. `.spine/active-feature` → slug

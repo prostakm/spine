@@ -73,3 +73,8 @@ Update `.spine/progress.md` → status `specced`. Tell user:
 > "Spec at `.spine/features/{slug}/spec.md`. Say **$spine-pwf {slug}** when ready to plan."
 
 Do NOT auto-generate a plan.
+
+## Cleanup (mid-spec reset)
+If user wants to abandon or restart spec work:
+- Run `.spine/scripts/cleanup-features.sh reset <slug>` to remove feature dir and clear active
+- User can then start fresh with `$spine-spec`

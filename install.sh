@@ -509,6 +509,8 @@ sync_managed_file "$SCRIPT_DIR/templates/.spine/features/_template/spec.md"     
 mkdir -p ".spine/scripts"
 sync_managed_file "$SCRIPT_DIR/scripts/validate-plan.sh" ".spine/scripts/validate-plan.sh"
 chmod +x ".spine/scripts/validate-plan.sh" 2>/dev/null || true
+sync_managed_file "$SCRIPT_DIR/scripts/cleanup-features.sh" ".spine/scripts/cleanup-features.sh"
+chmod +x ".spine/scripts/cleanup-features.sh" 2>/dev/null || true
 
 # ── Step 2: Copy Codex config.toml (merge if exists) ──
 SPINE_CONFIG_BLOCK_BEGIN="# BEGIN PROJECT SPINE CONFIG"
