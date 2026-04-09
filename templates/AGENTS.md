@@ -5,7 +5,8 @@
 This project has the Project Spine workflow framework installed.
 It does NOT activate automatically. Invoke explicitly:
 - `$spine-spec` — define requirements for a feature
-- `$spine-pwf` — plan and implement a feature
+- `$spine-pwf` — plan and implement a feature (uses spine-plan internally)
+- `$spine-brainstorm` — explore intent before spec
 - Or say: "use spine", "spine plan", "spine spec"
 
 Without explicit invocation, work normally — no planning files, no gates, no hooks.
@@ -31,10 +32,12 @@ $spine-spec ──► STOP ──► $spine-pwf ──► STOP ──► impleme
 
 ### Plan detail
 - Plans have two zones separated by a trust boundary:
-- **Above** (reviewer reads): decisions, spec+proof (strategy-adaptive), contracts
+- **Above** (reviewer reads): decisions, spec+proof with properties, contracts
 - **Below** (agent executes): file manifest, implementation steps, test notes, acceptance gate
 - Strategy selector: CORRECTNESS | EQUIVALENCE | STRUCTURAL | REGRESSION
-- Only CORRECTNESS requires domain knowledge to review — all others verify preservation
+- Only CORRECTNESS requires new domain knowledge to review — all others verify preservation
+- **Properties are the primary proof artifact** — reviewer validates property statements, agent implements property tests
+- Agent does not modify human-authored property statements without re-review
 - Reviewer reads top-to-bottom and stops at the trust boundary
 - `> [R]:` annotations go in sections above the trust boundary
 - See `docs/EXAMPLE-PLAN.md` for style
@@ -76,5 +79,8 @@ On `> [R]: APPROVED`: proceed to implementation.
 - 2-Action Rule: update findings.md after every 2 read/search ops
 - 3-Strike errors: diagnose → alternative → rethink → escalate
 - Convention check: verify against `.spine/conventions.md`
+- Test-first sequence: property tests before implementation code — applies at all autonomy levels
+- Property authorship: human-authored or human-validated properties are trusted proof; agent-proposed properties require > [R]: ✓
+- spine-plan skill: loaded during planning phase for strategy selection and property extraction
 
 # <!-- END PROJECT SPINE -->

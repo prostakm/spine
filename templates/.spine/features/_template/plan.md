@@ -40,6 +40,19 @@
 
 ## Spec + proof
 
+<!-- PROPERTY AUTHORSHIP RULE
+     Properties are the primary proof artifact. They live above the trust boundary
+     because the REVIEWER — not the agent — is responsible for their correctness.
+
+      - human:           reviewer wrote it. Trusted proof.
+      - human-validated: agent proposed it, reviewer confirmed with > [R]: ✓. Trusted.
+      - agent-proposed:  agent wrote it, not yet validated. NOT trusted as proof.
+
+      Agent implements property tests below the trust boundary.
+      Agent MUST NOT modify human-authored property statements during implementation.
+      If implementation reveals a property is wrong → STOP, propose revision, wait for > [R]: approval.
+-->
+
 <!-- Delete the blocks that don't match your strategy. -->
 
 <!-- CORRECTNESS -->
@@ -52,10 +65,10 @@
 |-------|-----------|----------|
 | ... | ... | ... |
 
-### Properties (Hypothesis)
-
-- **P1:** {invariant}
-- **P2:** {invariant}
+### Properties
+<!-- AUTHOR: human | human-validated | agent-proposed -->
+- **P1:** {category}: {invariant}
+- **P2:** {category}: {invariant}
 
 ### Snapshot anchors
 
@@ -77,6 +90,10 @@
 
 **All tests in** {scope} **pass unmodified.**
 If any assertion changes -> escalate.
+
+### Properties
+<!-- AUTHOR: human | human-validated | agent-proposed -->
+- **P1:** preservation: {output for all valid inputs is identical before and after}
 
 ### Delta (perf only)
 
@@ -100,6 +117,10 @@ If any assertion changes -> escalate.
 
 - {wiring proof}
 
+### Properties
+<!-- AUTHOR: human | human-validated | agent-proposed -->
+- **P1:** structural: {architecture invariant}
+
 <!-- REGRESSION -->
 
 ### Reproduction
@@ -117,7 +138,9 @@ If any assertion changes -> escalate.
 
 - {property this bug reveals}
 
----
+### Properties
+<!-- AUTHOR: human | human-validated | agent-proposed -->
+- **P1:** {category}: {the violated invariant, now a property}
 
 ## Contracts
 
@@ -159,10 +182,15 @@ If any assertion changes -> escalate.
 
 ### Test implementation notes
 
-- {parametrize, hypothesis hints, snapshot format}
+- {parametrize, property framework hints, snapshot format}
+- {property framework for this stack: hypothesis (Python), fast-check (JS/TS),
+  jqwik (Java), rapid (Go), FsCheck (.NET), QuickCheck (Haskell)}
 
 ### Acceptance gate
 
+- [ ] All properties from Spec + proof implemented as tests
+- [ ] Property tests pass (minimum 100 generated cases per property)
+- [ ] No property statements modified without reviewer approval
 - [ ] {strategy-specific checks}
 
 ---

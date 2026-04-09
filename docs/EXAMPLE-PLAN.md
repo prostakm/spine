@@ -38,10 +38,12 @@
 | 40h @ 25.125 | no deductions | 1005.00 |
 | 12h @ 19.995 | fixed tax 10% | 215.95 |
 
-### Properties (Hypothesis)
-- **P1:** net pay is never negative
-- **P2:** increasing hours never decreases net pay
-- **P3:** equivalent decimal inputs normalize to same cents
+### Properties
+<!-- AUTHOR: human -->
+- **P1:** range: net pay is never negative
+- **P2:** relational: increasing hours never decreases net pay (rate and deductions held constant)
+- **P3:** stability: equivalent decimal inputs normalize to same cents value
+- **P4:** range: deductions never produce net pay below zero (floor at 0)
 
 ### Snapshot anchors
 - CSV export row for payroll summary
@@ -81,8 +83,10 @@ Money(cents: int, currency: str)
 - use decimal strategies with two to four fractional places
 
 ### Acceptance gate
-- [ ] finance fixtures pass unchanged
-- [ ] property tests pass for 500 generated cases
+- [ ] Property tests implemented (hypothesis with Decimal strategies)
+- [ ] All 4 properties pass for 500 generated cases
+- [ ] Finance fixture tests pass unchanged
+- [ ] No property statements modified from plan
 ```
 
 ## STRUCTURAL Example
@@ -131,6 +135,12 @@ Money(cents: int, currency: str)
 - route exists in API registry
 - endpoint calls audit service, not repository
 
+### Properties
+<!-- AUTHOR: human -->
+- **P1:** structural: no handler callable without admin middleware in call chain
+- **P2:** range: response always contains "events" key with list value
+- **P3:** structural: handler depends on audit service interface, not repository
+
 ## Contracts
 ### Inputs
 ```text
@@ -163,6 +173,8 @@ GET /admin/audit?limit=int
 - keep response snapshot small and stable
 
 ### Acceptance gate
-- [ ] unauthorized requests return 401/403 as specified
-- [ ] route wiring smoke tests pass
+- [ ] Structural property tests pass (import/dependency assertions)
+- [ ] Unauthorized requests return 401/403 as specified
+- [ ] Route wiring smoke tests pass
+- [ ] No property statements modified from plan
 ```

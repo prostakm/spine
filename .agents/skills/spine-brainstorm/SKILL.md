@@ -84,6 +84,8 @@ Turn an idea into a short, approved design that is clear enough to hand off to
   - problem and user outcome
   - requirements and non-goals
   - key flow or architecture choices
+  - invariants: what must always be true (use category vocabulary:
+    range, relational, stability, preservation, structural)
   - verification / acceptance checks
 - Write the proposed design to `## Proposed Design` in spec.md with `Status: draft`
 - Get user approval before writing the spec
@@ -93,7 +95,13 @@ Turn an idea into a short, approved design that is clear enough to hand off to
 - Consolidate the approved design into `## Spec` in spec.md
 - Keep the spec focused and testable; if it grows too large, split the feature
 - Include `## Change type` and `## Invariants` sections to help the
-  planner select proof strategy
+  planner select proof strategy. Use category labels:
+  range, relational, stability, preservation, structural.
+  If no invariants emerged during brainstorming, ask:
+  "What must always be true about this feature, for any valid input?". Use category labels:
+  range, relational, stability, preservation, structural.
+  If no invariants emerged during brainstorming, ask:
+  "What must always be true about this feature, for any valid input?"
 - **Splitting**: if the feature covers multiple independent concerns, propose splitting:
   1. Keep the primary concern in the current feature
   2. Create new feature dirs with spec.md containing YAML frontmatter `dependencies` referencing the current slug

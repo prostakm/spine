@@ -17,12 +17,15 @@ All planning artifacts live in `.spine/features/{slug}/`.
 3. If intent is ambiguous, use `/spine-brainstorm` first and write `spec.md`.
 4. Write the feature slug to `.spine/active-feature`.
 5. Create `.spine/features/{slug}/plan.md` from the template.
-6. Draft `plan.md` with strategy-adaptive structure:
+6. Use **spine-plan** skill to draft `plan.md` with strategy-adaptive structure:
    - Pick **Strategy** based on change type from spec
    - Write **Decisions** (Chosen/Over/Consequence)
    - Write **Spec + proof** using the matching strategy block
+   - Extract **Properties** from spec invariants; classify by category
+   - Mark property authorship: `human` if from spec, `agent-proposed` if inferred
    - Write **Contracts** (skip for EQUIVALENCE/REGRESSION)
    - Write **Agent instructions** below the trust boundary
+   - Include property framework in test implementation notes
 7. Run `.spine/scripts/validate-plan.sh .spine/features/{slug}/plan.md`.
 8. Keep `## Review Gate` at `pending` and `## State` phase at `planning`.
 9. Present the plan to the user for approval.
@@ -30,6 +33,9 @@ All planning artifacts live in `.spine/features/{slug}/`.
 11. Change `## State` phase to `implementation`.
 
 ### During execution
+- Implement property tests BEFORE implementation code for every strategy.
+- Do not modify property statements from above the trust boundary.
+- If a property is wrong, stop and propose a revision. Do not silently change it.
 - `plan.md` is the source of truth for what to do next.
 - Keep `## Agent instructions`, `## Decisions log`, `## Errors`, and `## State` up to date as work progresses.
 - Create `findings.md` or `log.md` only when the extra artifact adds real handoff value.

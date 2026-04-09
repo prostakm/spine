@@ -369,8 +369,9 @@ ensure_yaml_child_line() {
 
 install_claude_skills() {
     local src_dir="$1" dst_dir="$2"
-    mkdir -p "$dst_dir/spine-brainstorm" "$dst_dir/spine-pwf" "$dst_dir/spine-spec"
+    mkdir -p "$dst_dir/spine-brainstorm" "$dst_dir/spine-plan" "$dst_dir/spine-pwf" "$dst_dir/spine-spec"
     sync_managed_file "$src_dir/spine-brainstorm/SKILL.md" "$dst_dir/spine-brainstorm/SKILL.md"
+    sync_managed_file "$src_dir/spine-plan/SKILL.md"        "$dst_dir/spine-plan/SKILL.md"
     sync_managed_file "$src_dir/spine-pwf/SKILL.md"        "$dst_dir/spine-pwf/SKILL.md"
     sync_managed_file "$src_dir/spine-spec/SKILL.md"       "$dst_dir/spine-spec/SKILL.md"
 }
@@ -540,9 +541,11 @@ rm -f "$SPINE_CONFIG_BLOCK_FILE"
 
 # ── Step 3: Copy skills ──
 mkdir -p ".agents/skills/spine-brainstorm"
+mkdir -p ".agents/skills/spine-plan"
 mkdir -p ".agents/skills/spine-pwf"
 mkdir -p ".agents/skills/spine-spec"
 sync_managed_file "$SCRIPT_DIR/.agents/skills/spine-brainstorm/SKILL.md" ".agents/skills/spine-brainstorm/SKILL.md"
+sync_managed_file "$SCRIPT_DIR/.agents/skills/spine-plan/SKILL.md" ".agents/skills/spine-plan/SKILL.md"
 sync_managed_file "$SCRIPT_DIR/.agents/skills/spine-pwf/SKILL.md"  ".agents/skills/spine-pwf/SKILL.md"
 sync_managed_file "$SCRIPT_DIR/.agents/skills/spine-spec/SKILL.md" ".agents/skills/spine-spec/SKILL.md"
 
@@ -692,9 +695,9 @@ echo "    .spine/features/_template/ ← Spec, plan, and optional findings/log t
 echo "    .codex/config.toml         ← Main-session Codex defaults"
 echo "    .codex/hooks.json          ← Codex hook configuration"
 echo "    .codex/hooks/              ← SessionStart and Stop hooks"
-echo "    .agents/skills/            ← spine-brainstorm, spine-pwf, and spine-spec (Codex)"
+echo "    .agents/skills/            ← spine-brainstorm, spine-plan, spine-pwf, spine-spec (Codex)"
 echo "    AGENTS.md                  ← Workflow instructions for Codex and OpenCode"
-echo "    .claude/skills/            ← spine-brainstorm, spine-pwf, and spine-spec (Claude Code)"
+echo "    .claude/skills/            ← spine-brainstorm, spine-plan, spine-pwf, spine-spec (Claude Code)"
 echo "    .claude/settings.json      ← Stop hook for Claude Code"
 echo "    CLAUDE.md                  ← Workflow instructions for Claude Code"
 echo "    .opencode/plugins/spine.js ← Review gate enforcement and SessionStart (OpenCode)"

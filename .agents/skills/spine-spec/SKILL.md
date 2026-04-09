@@ -30,9 +30,12 @@ Concerns to probe:
 - Edge cases: empty states, first-time use, concurrent users
 - Priority: MVP scope vs nice-to-have — what can we cut?
 - Success metric: how do we know this feature works for users?
-- Invariants: what business rules are absolute? (e.g., "tax never
-  negative", "user can always access their own data", "no data loss
-  on cancellation")
+- Invariants — probe with categories:
+  - "What should NEVER happen?" → range (e.g., "price never negative")
+  - "If X increases, what else must increase/decrease/stay same?" → relational
+  - "If I run this twice with same input, what stays the same?" → stability
+  - "What must be identical before and after this change?" → preservation
+  - "What business rules are absolute?" → range or relational
 
 **Architect** — when the feature is technical/infrastructure:
 triggers: migration, refactor, API, integration, performance, security, schema, deploy
@@ -45,8 +48,12 @@ Concerns to probe:
 - Performance: latency budget? Throughput requirement?
 - Security: auth, input validation, data exposure?
 - Rollback: how do we undo this if it goes wrong?
-- Invariants: what must always be true? (e.g., "no circular imports",
-  "response time < 200ms", "migration is reversible")
+- Invariants — probe with categories:
+  - "What module boundaries must not be crossed?" → structural
+  - "What response shape / timing guarantees must hold?" → range
+  - "What is identical before and after this change?" → preservation
+  - "What must always be true about the data flow?" → relational
+  - "Is this operation idempotent? Deterministic?" → stability
 
 **Both roles always ask:**
 - What is explicitly NOT in scope?
@@ -54,6 +61,8 @@ Concerns to probe:
 - Acceptance criteria — how do we verify it works?
 - What type of change is this? (new logic, refactor, new endpoint,
   bugfix, performance, infrastructure)
+- What must ALWAYS be true, for ANY valid input? (These become properties in the plan.)
+- What must ALWAYS be true, for ANY valid input? (These become properties in the plan.)
 
 ### Step 3: Elicit requirements
 Read autonomy from `.spine/config.yaml`:
@@ -72,6 +81,10 @@ Use explorer findings to make questions specific:
 - Include YAML frontmatter with `dependencies: []` and `dependents: []`
 - Tag the role used: `**Role:** product-owner` or `**Role:** architect`
 - Include `## Change type` and `## Invariants` when known
+- Invariants section uses category labels (range, relational, stability, preservation, structural)
+- Every invariant should be expressible as "for all valid X, Y holds" — if it can't be, it's an acceptance criterion, not an invariant
+- Invariants section uses category labels (range, relational, stability, preservation, structural)
+- Every invariant should be expressible as "for all valid X, Y holds" — if it can't be, it's an acceptance criterion, not an invariant
 - Every requirement must be testable
 - Under 60 lines — if longer, split the feature
 - **Splitting**: if the feature is too complex or covers multiple concerns:

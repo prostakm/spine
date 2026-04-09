@@ -14,6 +14,22 @@ fi
 
 errors=0
 
+# Detect legacy phase-based format — skip new-format checks entirely
+if grep -qE '^### Phase [0-9]' "$PLAN"; then
+    # Legacy format — minimal checks only
+    if ! grep -qE '^## Review Gate' "$PLAN"; then
+        echo "Missing section: ## Review Gate" >&2
+        errors=$((errors + 1))
+    fi
+    if [ "$errors" -gt 0 ]; then
+        echo "" >&2
+        echo "Validation failed: ${errors} error(s)" >&2
+        exit 1
+    fi
+    echo "Plan valid (legacy format): ${PLAN}"
+    exit 0
+fi
+
 check_section() {
     local heading="$1"
     if ! grep -q "^## ${heading}" "$PLAN"; then
@@ -55,6 +71,16 @@ esac
 
 if ! grep -qE '^### Acceptance gate' "$PLAN"; then
     echo "Missing ### Acceptance gate in Agent instructions" >&2
+    errors=$((errors + 1))
+fi
+
+if ! grep -qE '^### Properties' "$PLAN"; then
+    echo "Missing ### Properties subsection in Spec + proof" >&2
+    errors=$((errors + 1))
+fi
+
+if grep -qE '^### Properties' "$PLAN" && ! grep -qE '<!-- AUTHOR:' "$PLAN"; then
+    echo "Properties section missing AUTHOR marker (human | human-validated | agent-proposed)" >&2
     errors=$((errors + 1))
 fi
 

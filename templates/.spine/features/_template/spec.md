@@ -32,7 +32,15 @@ dependents: []
 - [ ] {testable criterion}
 
 ## Invariants
-- {e.g., "tax is never negative"}
+<!-- Properties that must ALWAYS hold. Carried into plan's proof sketch.
+     Categories:
+       range        — bounded output (e.g., "tax is never negative")
+       relational   — A implies B (e.g., "increasing hours never decreases net pay")
+       stability    — idempotent/deterministic (e.g., "same input always produces same output")
+       preservation — before equals after (e.g., "refactor doesn't change API response shape")
+       structural   — architecture rule (e.g., "no handler imports storage directly")
+-->
+- {category}: {plain English invariant}
 
 ## Open Questions
 - {unresolved — decide before planning}

@@ -100,14 +100,16 @@ done
 install_hooks_config
 
 echo -e "\n${GREEN}── Skills ──${NC}"
-mkdir -p ".agents/skills/spine-brainstorm" ".agents/skills/spine-pwf" ".agents/skills/spine-spec"
+mkdir -p ".agents/skills/spine-brainstorm" ".agents/skills/spine-plan" ".agents/skills/spine-pwf" ".agents/skills/spine-spec"
 update_file "$SCRIPT_DIR/.agents/skills/spine-brainstorm/SKILL.md" ".agents/skills/spine-brainstorm/SKILL.md"
+update_file "$SCRIPT_DIR/.agents/skills/spine-plan/SKILL.md"  ".agents/skills/spine-plan/SKILL.md"
 update_file "$SCRIPT_DIR/.agents/skills/spine-pwf/SKILL.md"  ".agents/skills/spine-pwf/SKILL.md"
 update_file "$SCRIPT_DIR/.agents/skills/spine-spec/SKILL.md" ".agents/skills/spine-spec/SKILL.md"
 
 echo -e "\n${GREEN}── Claude Skills ──${NC}"
-mkdir -p ".claude/skills/spine-brainstorm" ".claude/skills/spine-pwf" ".claude/skills/spine-spec"
+mkdir -p ".claude/skills/spine-brainstorm" ".claude/skills/spine-plan" ".claude/skills/spine-pwf" ".claude/skills/spine-spec"
 update_file "$SCRIPT_DIR/.agents/skills/spine-brainstorm/SKILL.md" ".claude/skills/spine-brainstorm/SKILL.md"
+update_file "$SCRIPT_DIR/.agents/skills/spine-plan/SKILL.md"  ".claude/skills/spine-plan/SKILL.md"
 update_file "$SCRIPT_DIR/.agents/skills/spine-pwf/SKILL.md"  ".claude/skills/spine-pwf/SKILL.md"
 update_file "$SCRIPT_DIR/.agents/skills/spine-spec/SKILL.md" ".claude/skills/spine-spec/SKILL.md"
 
