@@ -31,16 +31,25 @@ SLUG="$(tr -d '[:space:]' < "$ACTIVE_FILE" 2>/dev/null || true)"
 PLAN="${SPINE_DIR}/features/${SLUG}/plan.md"
 [ -f "$PLAN" ] || exit 0
 
-INCOMPLETE_PHASES="$(grep -E -c '\*\*Status:\*\*\s*(pending|in_progress)' "$PLAN" 2>/dev/null || true)"
-INCOMPLETE_PHASES="${INCOMPLETE_PHASES:-0}"
-if [ "$INCOMPLETE_PHASES" -gt 0 ]; then
-    block_stop "Project Spine feature '${SLUG}' still has ${INCOMPLETE_PHASES} incomplete phase(s) in ${PLAN}. Finish the active phase or mark the plan accurately before stopping."
+STATE_PHASE="$(awk '
+    /^## State$/ { in_state = 1; next }
+    in_state && /^## / { exit }
+    in_state && /^[[:space:]]*-[[:space:]]*Phase:[[:space:]]*/ {
+        sub(/^[[:space:]]*-[[:space:]]*Phase:[[:space:]]*/, "", $0)
+        print tolower($0)
+        exit
+    }
+' "$PLAN" 2>/dev/null || true)"
+
+STATE_PHASE="${STATE_PHASE:-}"
+if [ -z "$STATE_PHASE" ] || [ "$STATE_PHASE" = "planning" ]; then
+    exit 0
 fi
 
 UNCHECKED_TASKS="$(grep -E -c '^[[:space:]]*-[[:space:]]+\[[[:space:]]\]' "$PLAN" 2>/dev/null || true)"
 UNCHECKED_TASKS="${UNCHECKED_TASKS:-0}"
 if [ "$UNCHECKED_TASKS" -gt 0 ]; then
-    block_stop "Project Spine feature '${SLUG}' still has ${UNCHECKED_TASKS} unchecked task(s) in ${PLAN}. Either complete them or update the plan before stopping."
+    block_stop "Project Spine feature '${SLUG}' still has ${UNCHECKED_TASKS} unchecked task(s) in ${PLAN}. Complete the acceptance gate or update the plan before stopping."
 fi
 
 exit 0

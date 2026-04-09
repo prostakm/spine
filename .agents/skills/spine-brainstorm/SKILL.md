@@ -92,6 +92,8 @@ Turn an idea into a short, approved design that is clear enough to hand off to
 ### 5. Write the spec
 - Consolidate the approved design into `## Spec` in spec.md
 - Keep the spec focused and testable; if it grows too large, split the feature
+- Include `## Change type` and `## Invariants` sections to help the
+  planner select proof strategy
 - **Splitting**: if the feature covers multiple independent concerns, propose splitting:
   1. Keep the primary concern in the current feature
   2. Create new feature dirs with spec.md containing YAML frontmatter `dependencies` referencing the current slug

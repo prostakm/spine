@@ -24,9 +24,15 @@ dependents: []
 ## Constraints
 - {from .spine/project.md or feature-specific}
 
+## Change type
+- Type: {new-logic | refactor | new-endpoint | bugfix | performance | infrastructure}
+
 ## Acceptance Criteria
 - [ ] {testable criterion}
 - [ ] {testable criterion}
+
+## Invariants
+- {e.g., "tax is never negative"}
 
 ## Open Questions
 - {unresolved — decide before planning}

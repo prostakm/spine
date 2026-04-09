@@ -17,19 +17,21 @@ All planning artifacts live in `.spine/features/{slug}/`.
 3. If intent is ambiguous, use `/spine-brainstorm` first and write `spec.md`.
 4. Write the feature slug to `.spine/active-feature`.
 5. Create `.spine/features/{slug}/plan.md` from the template.
-6. Draft `plan.md` so a fresh implementer can act from the plan alone.
-7. Include `## Goal`, `## Scope Guardrails`, `## Codebase Anchors`,
-   `## File Plan`, `## Current Slice`, `## Execution Slices`,
-   `## Verification`, `## Review Gate`, and `## State`.
-8. Run `.spine/scripts/validate-plan.sh .spine/features/{slug}/plan.md`.
-9. Keep `## Review Gate` at `pending` and `## State` phase at `planning`.
-10. Present the plan to the user for approval.
-11. Record approval in `plan.md` before implementation begins.
-12. Change `## State` phase to `implementation`.
+6. Draft `plan.md` with strategy-adaptive structure:
+   - Pick **Strategy** based on change type from spec
+   - Write **Decisions** (Chosen/Over/Consequence)
+   - Write **Spec + proof** using the matching strategy block
+   - Write **Contracts** (skip for EQUIVALENCE/REGRESSION)
+   - Write **Agent instructions** below the trust boundary
+7. Run `.spine/scripts/validate-plan.sh .spine/features/{slug}/plan.md`.
+8. Keep `## Review Gate` at `pending` and `## State` phase at `planning`.
+9. Present the plan to the user for approval.
+10. Record approval in `plan.md` before implementation begins.
+11. Change `## State` phase to `implementation`.
 
 ### During execution
 - `plan.md` is the source of truth for what to do next.
-- Keep `## Current Slice`, `## Execution Slices`, and `## State` up to date as work progresses.
+- Keep `## Agent instructions`, `## Decisions log`, `## Errors`, and `## State` up to date as work progresses.
 - Create `findings.md` or `log.md` only when the extra artifact adds real handoff value.
 
 ### Completing a feature
@@ -40,7 +42,7 @@ All planning artifacts live in `.spine/features/{slug}/`.
 ### Session recovery (after /clear or new session)
 1. Read `.spine/active-feature` → current feature slug
 2. Read `.spine/features/{slug}/plan.md`
-3. Resume from `## Current Slice` and `## State`
+3. Resume from `## Agent instructions` and `## State`
 4. Read `findings.md` or `log.md` only if `plan.md` explicitly points to them
 
 ## Execution Standard

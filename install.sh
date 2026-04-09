@@ -478,7 +478,9 @@ PY
     elif [ -n "$backup" ] && ! cmp -s "$backup" "$dst" 2>/dev/null; then
         info "Updated: $dst"
     fi
-    [ -n "$backup" ] && rm -f "$backup"
+    if [ -n "$backup" ]; then
+        rm -f "$backup"
+    fi
 }
 
 # ── Step 1: Create .spine/ directory structure ──
@@ -593,6 +595,17 @@ remove_if_exists ".agents/skills/spine-worker"
 remove_if_exists ".agents/skills/spine-reviewer"
 remove_if_exists ".agents/skills/spine-review"
 remove_if_exists ".agents/skills/spine-execution"
+remove_if_exists ".claude/skills/spine-explorer"
+remove_if_exists ".claude/skills/spine-worker"
+remove_if_exists ".claude/skills/spine-reviewer"
+remove_if_exists ".claude/skills/spine-review"
+remove_if_exists ".claude/skills/spine-execution"
+remove_if_exists ".claude/commands/spine-plan.md"
+remove_if_exists ".claude/commands/spine-spec.md"
+remove_if_exists ".claude/commands/spine-review.md"
+remove_if_exists ".claude/commands/spine-execution.md"
+remove_if_exists ".claude/commands/spine-brainstorm.md"
+remove_if_exists ".claude/commands/spine-pwf.md"
 remove_if_exists ".codex/hooks/pre-tool-use"
 remove_if_exists ".codex/hooks/post-tool-use"
 remove_if_exists ".codex/hooks/stop"
@@ -607,6 +620,7 @@ remove_if_exists ".codex/hooks/pre_tool_use.sh"
 remove_if_exists ".codex/hooks/post_tool_use.sh"
 remove_if_exists ".codex/hooks/session_start.sh"
 remove_if_exists ".codex/hooks/hooks.json.old"
+remove_empty_dir ".claude/commands"
 remove_empty_dir ".codex/hooks"
 
 # ── Step 7: Update .gitignore ──

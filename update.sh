@@ -71,7 +71,7 @@ fi
 info "Updating Project Spine in: $PROJECT_ROOT"
 echo ""
 
-echo -e "${CYAN}Will update:${NC}  hooks, skills, agents, templates, AGENTS.md spine section, .codex/config.toml spine block"
+echo -e "${CYAN}Will update:${NC}  hooks, skills, Claude skills, templates, AGENTS.md spine section, CLAUDE.md spine section, .codex/config.toml spine block"
 echo -e "${CYAN}Won't touch:${NC} project.md, conventions.md, progress.md, config.yaml, features/*"
 echo ""
 
@@ -100,15 +100,29 @@ done
 install_hooks_config
 
 echo -e "\n${GREEN}── Skills ──${NC}"
-mkdir -p ".agents/skills/spine-pwf" ".agents/skills/spine-spec"
+mkdir -p ".agents/skills/spine-brainstorm" ".agents/skills/spine-pwf" ".agents/skills/spine-spec"
+update_file "$SCRIPT_DIR/.agents/skills/spine-brainstorm/SKILL.md" ".agents/skills/spine-brainstorm/SKILL.md"
 update_file "$SCRIPT_DIR/.agents/skills/spine-pwf/SKILL.md"  ".agents/skills/spine-pwf/SKILL.md"
 update_file "$SCRIPT_DIR/.agents/skills/spine-spec/SKILL.md" ".agents/skills/spine-spec/SKILL.md"
+
+echo -e "\n${GREEN}── Claude Skills ──${NC}"
+mkdir -p ".claude/skills/spine-brainstorm" ".claude/skills/spine-pwf" ".claude/skills/spine-spec"
+update_file "$SCRIPT_DIR/.agents/skills/spine-brainstorm/SKILL.md" ".claude/skills/spine-brainstorm/SKILL.md"
+update_file "$SCRIPT_DIR/.agents/skills/spine-pwf/SKILL.md"  ".claude/skills/spine-pwf/SKILL.md"
+update_file "$SCRIPT_DIR/.agents/skills/spine-spec/SKILL.md" ".claude/skills/spine-spec/SKILL.md"
 
 echo -e "\n${GREEN}── Templates ──${NC}"
 mkdir -p ".spine/features/_template"
 for tmpl in plan.md findings.md log.md spec.md; do
     update_file "$SCRIPT_DIR/templates/.spine/features/_template/$tmpl" ".spine/features/_template/$tmpl"
 done
+
+echo -e "\n${GREEN}── Planning utilities ──${NC}"
+mkdir -p ".spine/scripts"
+update_file "$SCRIPT_DIR/scripts/validate-plan.sh" ".spine/scripts/validate-plan.sh"
+chmod +x ".spine/scripts/validate-plan.sh" 2>/dev/null || true
+update_file "$SCRIPT_DIR/scripts/cleanup-features.sh" ".spine/scripts/cleanup-features.sh"
+chmod +x ".spine/scripts/cleanup-features.sh" 2>/dev/null || true
 
 echo -e "\n${GREEN}── AGENTS.md ──${NC}"
 SPINE_BEGIN="<!-- BEGIN PROJECT SPINE -->"
@@ -144,6 +158,40 @@ else
     info "Appended spine section to AGENTS.md"
 fi
 
+echo -e "\n${GREEN}── CLAUDE.md ──${NC}"
+CLAUDE_BEGIN="<!-- BEGIN PROJECT SPINE -->"
+CLAUDE_END="<!-- END PROJECT SPINE -->"
+
+if [ ! -f "CLAUDE.md" ]; then
+    cp "$SCRIPT_DIR/templates/CLAUDE.md" "CLAUDE.md"
+    info "Created: CLAUDE.md"
+elif grep -q "$CLAUDE_BEGIN" "CLAUDE.md" && grep -q "$CLAUDE_END" "CLAUDE.md"; then
+    BEFORE=$(sed "/$CLAUDE_BEGIN/q" "CLAUDE.md")
+    AFTER=$(sed -n "/$CLAUDE_END/,\$p" "CLAUDE.md" | tail -n +2)
+    NEW_SECTION=$(cat "$SCRIPT_DIR/templates/CLAUDE.md")
+
+    {
+        echo "$BEFORE"
+        echo "$NEW_SECTION" | tail -n +2
+        echo "$AFTER"
+    } > "CLAUDE.md.tmp"
+
+    if ! diff -q "CLAUDE.md" "CLAUDE.md.tmp" > /dev/null 2>&1; then
+        mv "CLAUDE.md.tmp" "CLAUDE.md"
+        info "Updated: CLAUDE.md (spine section replaced)"
+    else
+        rm "CLAUDE.md.tmp"
+        skip "Unchanged: CLAUDE.md"
+    fi
+else
+    warn "CLAUDE.md exists but missing spine markers — appending"
+    echo "" >> "CLAUDE.md"
+    echo "---" >> "CLAUDE.md"
+    echo "" >> "CLAUDE.md"
+    cat "$SCRIPT_DIR/templates/CLAUDE.md" >> "CLAUDE.md"
+    info "Appended spine section to CLAUDE.md"
+fi
+
 echo -e "\n${GREEN}── Project files (create only if missing) ──${NC}"
 for f in project.md conventions.md progress.md config.yaml; do
     if [ ! -f ".spine/$f" ]; then
@@ -162,5 +210,5 @@ echo -e "${GREEN}│  Project Spine updated                   │${NC}"
 echo -e "${GREEN}╰──────────────────────────────────────────╯${NC}"
 echo ""
 echo "  Review changes: git diff --stat"
-echo "  Stage: git add .spine/ .codex/ .agents/ AGENTS.md"
+echo "  Stage: git add .spine/ .codex/ .agents/ .claude/ AGENTS.md CLAUDE.md"
 echo ""

@@ -1,166 +1,168 @@
-# Feature: auth-session
+# Example Plans
+
+## CORRECTNESS Example
+
+```markdown
+# Feature: payroll-rounding
 
 ## Context
 - Project: `.spine/project.md`
 - Conventions: `.spine/conventions.md`
 - Progress: `.spine/progress.md`
-- Spec: `.spine/features/auth-session/spec.md`
+- Spec: `.spine/features/payroll-rounding/spec.md`
 
-**Goal:** Session-based auth — login, logout, middleware. Server-side sessions in SQLite, httpOnly cookie.
-
-**Approach:** Sessions table + random token cookie. Server-side over JWT because sessions are instantly revocable and don't bloat cookies.
-
-| Alternative | Why rejected |
-|---|---|
-| JWT in httpOnly cookie | Can't revoke without blocklist |
-| JWT + refresh token | Over-engineered for single-app |
-| External OAuth | Violates single-binary constraint |
-
-**Risks:**
-- Session table unbounded growth → hourly cleanup goroutine, indexed `expires_at`
-- Per-request DB lookup → benchmark must confirm <5ms at 10k sessions
-
----
-
-### Phase 1: Session storage
-
-`migrations/002_sessions.sql` — create
-```sql
-CREATE TABLE sessions (
-    token      TEXT PRIMARY KEY,  -- crypto/rand 32 bytes, hex
-    user_id    INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-    expires_at DATETIME NOT NULL,
-    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
-);
-CREATE INDEX idx_sessions_expires ON sessions(expires_at);
-CREATE INDEX idx_sessions_user ON sessions(user_id);
-```
-
-`internal/auth/session_repo.go` — create
-```go
-type Session struct { Token string; UserID int64; ExpiresAt, CreatedAt time.Time }
-type SessionRepo struct { db *sql.DB }
-
-func (r *SessionRepo) Create(ctx, userID, ttl) (Session, error)
-  // crypto/rand 32 bytes → hex token, INSERT with expires_at = now+ttl
-
-func (r *SessionRepo) FindByToken(ctx, token) (Session, error)
-  // SELECT WHERE token=? AND expires_at > now; ErrSessionNotFound if miss
-
-func (r *SessionRepo) Delete(ctx, token) error
-func (r *SessionRepo) DeleteByUser(ctx, userID) error  // logout-everywhere
-func (r *SessionRepo) CleanExpired(ctx) (int64, error)  // returns rows deleted
-```
-
-Tests — `session_repo_test.go`:
-- create and find valid session
-- find expired session → ErrSessionNotFound
-- delete removes session
-- delete by user clears all user sessions
-
-**Verify:** `go test ./internal/auth/... -run TestSessionRepo`
-**Status:** pending
-
----
-
-### Phase 2: Login & logout handlers
-
-`internal/auth/handler.go` — create
-```go
-type AuthHandler struct { sessions *SessionRepo; users *UserRepo; ttl time.Duration }
-
-// POST /login — {"email", "password"}
-// → 200 + Set-Cookie(session=token; HttpOnly; Secure; SameSite=Strict)
-// → 401 "invalid credentials" (same msg for bad email AND bad password)
-func (h *AuthHandler) Login(w, r)
-  // parse body → FindByEmail → bcrypt.Compare → sessions.Create → setCookie
-
-// POST /logout — requires session cookie
-// → 200 + clear cookie
-func (h *AuthHandler) Logout(w, r)
-  // get cookie → sessions.Delete → clear cookie (MaxAge=-1)
-```
-
-`internal/api/routes.go` — modify — register /login, /logout
-
-Edge cases:
-- No user enumeration: same 401 for bad email and bad password
-- Cookie flags: httpOnly + Secure + SameSite=Strict
-- Reject non-JSON with 415
-
-Tests — `handler_test.go`:
-- valid login → 200 + cookie
-- wrong password → 401, no cookie
-- unknown email → 401, same message (no enumeration)
-- missing fields → 400
-- logout clears session and cookie
-- logout without cookie → 401
-
-**Verify:** `go test ./internal/auth/... -run TestHandler`
-**Status:** pending
-
----
-
-### Phase 3: Session middleware
-
-`internal/auth/context.go` — create
-```go
-func ContextWithUser(ctx, *User) context.Context
-func UserFromContext(ctx) (*User, bool)  // nil,false if missing
-```
-
-`internal/auth/middleware.go` — create
-```go
-func RequireAuth(sessions, users) func(http.Handler) http.Handler
-  // get cookie → FindByToken → FindByID → inject user into ctx → next
-  // missing/expired/orphaned → 401 + clear cookie
-```
-
-`internal/api/routes.go` — modify — wrap protected routes
-
-Tests — `middleware_test.go`:
-- valid session → passes through, user in context
-- missing cookie → 401
-- expired session → 401 + cookie cleared
-- session with deleted user → 401 + session cleaned up
-
-**Verify:** `go test ./internal/auth/... -run TestMiddleware`
-**Status:** pending
-
----
-
-### Phase 4: Cleanup + integration test
-
-`internal/auth/cleanup.go` — create
-```go
-func StartCleanup(ctx, repo, interval)
-  // ticker loop: repo.CleanExpired every interval
-  // stops on ctx.Done (server shutdown)
-```
-
-`cmd/server/main.go` — modify — start cleanup goroutine
-
-`internal/auth/integration_test.go` — create
-- full flow: login → access protected → logout → access denied
-- benchmark: FindByToken with 10k sessions < 5ms p99
-
-**Verify:** `go test ./internal/auth/... -count=1` + benchmark
-**Status:** pending
-
----
-
-## Review Gate
-- Status: pending
-
-## State
-- Phase: planning
+**Status:** REVIEW
+**Scope:** Correct net-pay rounding for hourly payroll exports
+**Risk:** MEDIUM - touches money math
+**Strategy:** CORRECTNESS
 
 ## Decisions
-| Decision | Date | Rationale |
-|----------|------|-----------|
+**Goal:** Net pay matches finance rules for every supported timesheet
+**Approach:** Centralize rounding in one calculator and prove with fixtures + properties
+| Alternative | Why rejected |
+|---|---|
+| Round per intermediate field | drifts from finance worksheet |
+**Risks:**
+- rule mismatch -> lock fixture table from finance examples
 
-## Errors
-| Error | Attempt | Resolution |
-|-------|---------|------------|
+### D1: Rounding mode
+**Chosen:** banker rounding at final net-pay step
+**Over:** half-up per component - disagrees with worksheet
+**Consequence:** all callers must use shared calculator
 
-<!-- REVIEW: PENDING — add comments inline with > [R]: your comment -->
+## Spec + proof
+### Rules
+**R1: Final-only rounding** - round once after tax and benefit totals
+| Input | Condition | Expected |
+|-------|-----------|----------|
+| 40h @ 25.125 | no deductions | 1005.00 |
+| 12h @ 19.995 | fixed tax 10% | 215.95 |
+
+### Properties (Hypothesis)
+- **P1:** net pay is never negative
+- **P2:** increasing hours never decreases net pay
+- **P3:** equivalent decimal inputs normalize to same cents
+
+### Snapshot anchors
+- CSV export row for payroll summary
+
+### Edge cases
+- zero-hour timesheet
+- deductions larger than gross
+
+## Contracts
+### Inputs
+```text
+calculate_net_pay(hours: Decimal, rate: Decimal, deductions: list[Decimal]) -> Money
+```
+### Outputs
+```text
+Money(cents: int, currency: str)
+```
+### Side effects
+- none
+
+<!-- TRUST BOUNDARY - reviewer stops here -->
+
+## Agent instructions
+### File manifest
+| Action | Path | Notes |
+|--------|------|-------|
+| MODIFY | `payroll/calculator.py` | shared rounding logic |
+| MODIFY | `tests/test_payroll.py` | fixtures + properties |
+
+### Implementation strategy
+1. Add failing fixture tests for D1
+2. Move rounding to final return path only
+3. Add property coverage for monotonicity and non-negative output
+
+### Test implementation notes
+- parametrize finance worksheet cases
+- use decimal strategies with two to four fractional places
+
+### Acceptance gate
+- [ ] finance fixtures pass unchanged
+- [ ] property tests pass for 500 generated cases
+```
+
+## STRUCTURAL Example
+
+```markdown
+# Feature: admin-audit-endpoint
+
+## Context
+- Project: `.spine/project.md`
+- Conventions: `.spine/conventions.md`
+- Progress: `.spine/progress.md`
+- Spec: `.spine/features/admin-audit-endpoint/spec.md`
+
+**Status:** REVIEW
+**Scope:** Add admin-only audit-log read endpoint
+**Risk:** LOW - additive API surface
+**Strategy:** STRUCTURAL
+
+## Decisions
+**Goal:** Admins can query recent audit events without direct DB access
+**Approach:** Add a thin HTTP endpoint over existing audit service
+| Alternative | Why rejected |
+|---|---|
+| expose raw table query | bypasses auth and response shaping |
+**Risks:**
+- permission leak -> enforce admin check at route boundary
+
+### D1: Authorization boundary
+**Chosen:** route-level admin middleware
+**Over:** handler-local role check - easier to miss on reuse
+**Consequence:** all future admin audit routes reuse same guard
+
+## Spec + proof
+### Architecture constraints
+- no handler may import storage directly
+- admin auth enforced before handler executes
+
+### Boundary behavior
+| Request / input | Expected |
+|-----------------|----------|
+| valid admin token | 200 + JSON list |
+| missing auth | 401 |
+| non-admin user | 403 |
+
+### Smoke tests
+- route exists in API registry
+- endpoint calls audit service, not repository
+
+## Contracts
+### Inputs
+```text
+GET /admin/audit?limit=int
+```
+### Outputs
+```text
+200 {"events": AuditEvent[]}
+```
+### Side effects
+- none
+
+<!-- TRUST BOUNDARY - reviewer stops here -->
+
+## Agent instructions
+### File manifest
+| Action | Path | Notes |
+|--------|------|-------|
+| MODIFY | `internal/api/routes.go` | register route + middleware |
+| CREATE | `internal/api/admin_audit.go` | handler |
+| MODIFY | `internal/api/admin_audit_test.go` | boundary coverage |
+
+### Implementation strategy
+1. Add structural tests for route wiring and admin guard
+2. Implement handler against existing audit service interface
+3. Verify 401/403/200 behavior and JSON shape
+
+### Test implementation notes
+- assert handler dependency is service interface
+- keep response snapshot small and stable
+
+### Acceptance gate
+- [ ] unauthorized requests return 401/403 as specified
+- [ ] route wiring smoke tests pass
+```

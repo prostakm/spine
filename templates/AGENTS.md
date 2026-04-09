@@ -30,10 +30,13 @@ $spine-spec ──► STOP ──► $spine-pwf ──► STOP ──► impleme
 - `.spine/config.yaml` — autonomy level, model preferences
 
 ### Plan detail
-- File paths, types/schemas, function signatures, pseudocode (non-trivial only)
-- `## Context` section pointing to project.md, conventions.md, progress.md, and spec.md
-- Edge cases, test case names, verify command
-- Phase split only when natural — single-plan is fine
+- Plans have two zones separated by a trust boundary:
+- **Above** (reviewer reads): decisions, spec+proof (strategy-adaptive), contracts
+- **Below** (agent executes): file manifest, implementation steps, test notes, acceptance gate
+- Strategy selector: CORRECTNESS | EQUIVALENCE | STRUCTURAL | REGRESSION
+- Only CORRECTNESS requires domain knowledge to review — all others verify preservation
+- Reviewer reads top-to-bottom and stops at the trust boundary
+- `> [R]:` annotations go in sections above the trust boundary
 - See `docs/EXAMPLE-PLAN.md` for style
 
 ### Inline plan review

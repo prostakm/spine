@@ -30,6 +30,9 @@ Concerns to probe:
 - Edge cases: empty states, first-time use, concurrent users
 - Priority: MVP scope vs nice-to-have — what can we cut?
 - Success metric: how do we know this feature works for users?
+- Invariants: what business rules are absolute? (e.g., "tax never
+  negative", "user can always access their own data", "no data loss
+  on cancellation")
 
 **Architect** — when the feature is technical/infrastructure:
 triggers: migration, refactor, API, integration, performance, security, schema, deploy
@@ -42,11 +45,15 @@ Concerns to probe:
 - Performance: latency budget? Throughput requirement?
 - Security: auth, input validation, data exposure?
 - Rollback: how do we undo this if it goes wrong?
+- Invariants: what must always be true? (e.g., "no circular imports",
+  "response time < 200ms", "migration is reversible")
 
 **Both roles always ask:**
 - What is explicitly NOT in scope?
 - Dependencies on other features?
 - Acceptance criteria — how do we verify it works?
+- What type of change is this? (new logic, refactor, new endpoint,
+  bugfix, performance, infrastructure)
 
 ### Step 3: Elicit requirements
 Read autonomy from `.spine/config.yaml`:
@@ -64,6 +71,7 @@ Use explorer findings to make questions specific:
 - Write `.spine/features/{slug}/spec.md`
 - Include YAML frontmatter with `dependencies: []` and `dependents: []`
 - Tag the role used: `**Role:** product-owner` or `**Role:** architect`
+- Include `## Change type` and `## Invariants` when known
 - Every requirement must be testable
 - Under 60 lines — if longer, split the feature
 - **Splitting**: if the feature is too complex or covers multiple concerns:

@@ -62,7 +62,7 @@ Idea → $spine-spec → spec.md → plan.md → execute → review
 | `.spine/conventions.md` | Active conventions + decision log | grows slowly |
 | `.spine/progress.md` | Feature dashboard | one line per feature |
 | `.spine/config.yaml` | Autonomy flag, model preferences | ~20 lines |
-| `.spine/features/{slug}/plan.md` | Per-feature plan with phases | 3-7 phases |
+| `.spine/features/{slug}/plan.md` | Per-feature plan with review/execution split | ~1-2 pages |
 | `.spine/features/{slug}/findings.md` | Research and discoveries | updated per 2-Action Rule |
 | `.spine/features/{slug}/log.md` | Session log | timestamped entries |
 | `.spine/features/{slug}/spec.md` | Requirements (optional) | ≤60 lines |
@@ -71,8 +71,8 @@ Idea → $spine-spec → spec.md → plan.md → execute → review
 
 | Level | Planning | Execution | Review |
 |---|---|---|---|
-| **low** | User approves each phase | Pauses after each phase | User requests manually |
-| **med** | User approves plan once | Runs without pausing | Auto after final phase |
+| **low** | User approves key planning choices | Pauses after each implementation step | User requests manually |
+| **med** | User approves plan once | Runs without pausing | Auto after final implementation pass |
 | **high** | Auto-approved if no conflicts | Delegates bounded work, one writing worker at a time | Auto with summary |
 
 Set in `.spine/config.yaml`:
@@ -84,7 +84,7 @@ autonomy: med  # low | med | high
 
 - **SessionStart**: Loads project, conventions, and active feature context on startup/resume
 - **PreToolUse / PostToolUse**: Emit structured Bash-scoped reminders for active-plan discipline
-- **Stop**: Returns a blocking hook decision until all phases are marked complete
+- **Stop**: Returns a blocking hook decision while implementation checklists remain incomplete
 
 ## Customization
 
