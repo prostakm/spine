@@ -32,11 +32,10 @@ This is the foundation. Everything else references it. Replace the current templ
 
 **Approach:** {technical strategy — 1-2 sentences}
 
-| Alternative | Why rejected |
-|---|---|
-| {alt} | {reason} |
+**Rejected options (only if informative):**
+- {alt} — {reason}
 
-**Risks:**
+**Key risks (only if non-obvious):**
 - {risk} → {mitigation}
 
 ### D1: {decision title}
@@ -61,9 +60,10 @@ This is the foundation. Everything else references it. Replace the current templ
 
 **R1: {rule}** — {plain English}
 
-| Input | Condition | Expected |
-|-------|-----------|----------|
-| ... | ... | ... |
+```text
+{fixture input} -> {expected}
+{fixture input} -> {expected}
+```
 
 ### Properties (Hypothesis)
 
@@ -103,11 +103,9 @@ If any assertion changes → escalate.
 
 ### Boundary behavior
 
-| Request / input | Expected |
-|-----------------|----------|
-| valid | 200 + shape |
-| missing auth | 401 |
-| not found | 404 |
+- `{request}` -> `{status + shape}`
+- `{request}` -> `{status}`
+- `{request}` -> `{status}`
 
 ### Smoke tests
 
@@ -162,17 +160,28 @@ If any assertion changes → escalate.
 
 ### File manifest
 
-| Action | Path | Notes |
-|--------|------|-------|
-| CREATE | ... | ... |
-| MODIFY | ... | ... |
+- `CREATE path/to/file`
+  - symbols: `{new symbol}`, `{new symbol}`
+  - change: {what this file will contain}
+- `MODIFY path/to/file`
+  - symbols: `{existing symbol}`, `{new helper}`
+  - change: {what changes in this file}
 
 ### Implementation strategy
 
 <!-- Reference decisions by number. Phase if needed, flat if not. -->
 
-1. {step referencing D1}
-2. {step referencing D2}
+1. `{path or symbol}` - {step referencing D1}
+
+   ```text
+   {code snippet or pseudocode for the non-trivial part}
+   ```
+
+2. `{path or symbol}` - {step referencing D2}
+
+   ```text
+   {code snippet or pseudocode for the non-trivial part}
+   ```
 
 ### Test implementation notes
 
@@ -185,12 +194,10 @@ If any assertion changes → escalate.
 ---
 
 ## Decisions log
-| Decision | Date | Rationale |
-|----------|------|-----------|
+- {date} - {decision} - {rationale}
 
 ## Errors
-| Error | Attempt | Resolution |
-|-------|---------|------------|
+- {error} - attempt: {attempt} - resolution: {resolution}
 
 <!-- REVIEW: PENDING — add > [R]: comments inline, mark > [R]: APPROVED when done -->
 
@@ -220,28 +227,35 @@ The plan has two zones separated by a trust boundary:
 - **Strategy selector**: CORRECTNESS | EQUIVALENCE | STRUCTURAL | REGRESSION
   Pick based on the nature of the change. Only CORRECTNESS requires
   new domain knowledge from the reviewer.
-- **Decisions**: every fork where the agent needs human judgment.
-  Format: Chosen / Over / Consequence. Max 7 — split if more.
+- **Decisions**: only forks that need human judgment or lock in behavior.
+  Start with one-line `Goal` and `Approach`. Format: Chosen / Over /
+  Consequence. Max 7 — split if more.
 - **Spec + proof**: strategy-adaptive section. Include ONLY the block
   matching the chosen strategy, delete the rest:
-  - CORRECTNESS: rules with fixture tables, Hypothesis properties,
+  - CORRECTNESS: rules as explicit condition -> expectation cases;
+    one-line fixtures for simple cases, compact structured blocks for
+    complex conditionals; Hypothesis properties,
     snapshot anchors, edge cases
   - EQUIVALENCE: equivalence anchor (what must not change), existing
     suite requirement, delta metric (perf only)
   - STRUCTURAL: architecture constraints (import rules, permission checks),
-    boundary behavior table, smoke tests
+    boundary behavior as explicit request/context -> expected outcomes,
+    smoke tests
   - REGRESSION: reproduction test (expected vs actual), blast radius,
     new invariant if warranted
 - **Contracts**: input/output types crossing boundaries. Skip for
   EQUIVALENCE and REGRESSION unless interfaces change.
 
 **Below the trust boundary (agent executes, proofs verify):**
-- **File manifest**: exact paths with create/modify/delete
+- **File manifest**: exact paths with create/modify/delete, touched
+  symbols, and what changes in each file
 - **Implementation strategy**: steps referencing decisions by number.
-  Phase if natural stages exist, flat if not.
-- **Test implementation notes**: parametrize hints, Hypothesis
-  strategies, snapshot format
-- **Acceptance gate**: strategy-specific checklist
+  Phase if natural stages exist, flat if not. For every non-trivial
+  step, include a code snippet or pseudocode sketch.
+- **Test implementation notes**: exact test targets, parametrize hints,
+  Hypothesis strategies, snapshot format
+- **Acceptance gate**: strategy-specific checklist and concrete validation
+  commands when known
 
 The reviewer reads top-to-bottom and stops at the trust boundary.
 Everything below is verified by the proof sketch, not by eyeballs.
@@ -254,7 +268,8 @@ Replace the `### Style` block — add one line:
 - Bullet points over paragraphs
 - Short statements, not sentences
 - Code blocks for schemas/signatures/logic
-- Alternatives and risks as compact tables/lists
+- No tables in active plans. Encode conditionals directly in bullets or
+  compact structured blocks.
 - Delete unused strategy blocks from spec+proof — don't leave empty sections
 ```
 

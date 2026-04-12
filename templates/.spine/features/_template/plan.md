@@ -19,11 +19,10 @@
 
 **Approach:** {technical strategy - 1-2 sentences}
 
-| Alternative | Why rejected |
-|---|---|
-| {alt} | {reason} |
+**Rejected options (only if informative):**
+- {alt} - {why not}
 
-**Risks:**
+**Key risks (only if non-obvious):**
 - {risk} -> {mitigation}
 
 ### D1: {decision title}
@@ -61,9 +60,21 @@
 
 **R1: {rule}** - {plain English}
 
-| Input | Condition | Expected |
-|-------|-----------|----------|
-| ... | ... | ... |
+```text
+when: {compact condition}
+then: {expected behavior}
+when: {compact condition}
+then: {expected behavior}
+```
+
+```yaml
+case: {only when one-line fixtures are too lossy}
+when:
+  {field}: {value}
+  {field}: {value}
+then:
+  {observable}: {expected}
+```
 
 ### Properties
 <!-- AUTHOR: human | human-validated | agent-proposed -->
@@ -107,11 +118,9 @@ If any assertion changes -> escalate.
 
 ### Boundary behavior
 
-| Request / input | Expected |
-|-----------------|----------|
-| valid | 200 + shape |
-| missing auth | 401 |
-| not found | 404 |
+- `when: {request + context} -> then: {status + shape}`
+- `when: {request + context} -> then: {status}`
+- `when: {request + context} -> then: {status}`
 
 ### Smoke tests
 
@@ -170,21 +179,33 @@ If any assertion changes -> escalate.
 
 ### File manifest
 
-| Action | Path | Notes |
-|--------|------|-------|
-| CREATE | ... | ... |
-| MODIFY | ... | ... |
+- `CREATE path/to/file`
+  - symbols: `{new symbol}`, `{new symbol}`
+  - change: {what this file will contain}
+- `MODIFY path/to/file`
+  - symbols: `{existing symbol}`, `{new helper}`
+  - change: {what changes in this file}
 
 ### Implementation strategy
 
-1. {step referencing D1}
-2. {step referencing D2}
+1. `{path or symbol}` - {step referencing D1}
+
+   ```text
+   {code snippet or pseudocode for the non-trivial part}
+   ```
+
+2. `{path or symbol}` - {step referencing D2}
+
+   ```text
+   {code snippet or pseudocode for the non-trivial part}
+   ```
 
 ### Test implementation notes
 
 - {parametrize, property framework hints, snapshot format}
 - {property framework for this stack: hypothesis (Python), fast-check (JS/TS),
   jqwik (Java), rapid (Go), FsCheck (.NET), QuickCheck (Haskell)}
+- {exact test names or suites to add/update}
 
 ### Acceptance gate
 
@@ -196,12 +217,10 @@ If any assertion changes -> escalate.
 ---
 
 ## Decisions log
-| Decision | Date | Rationale |
-|----------|------|-----------|
+- {date} - {decision} - {rationale}
 
 ## Errors
-| Error | Attempt | Resolution |
-|-------|---------|------------|
+- {error} - attempt: {attempt} - resolution: {resolution}
 
 <!-- REVIEW: PENDING - add > [R]: comments inline, mark > [R]: APPROVED when done -->
 

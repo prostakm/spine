@@ -89,6 +89,33 @@ update_file() {
     fi
 }
 
+strip_legacy_spine_tail_section() {
+    local file="$1" start_regex="$2" signature="$3" label="$4"
+    [ -f "$file" ] || return 0
+
+    if grep -Fq "<!-- BEGIN PROJECT SPINE -->" "$file" 2>/dev/null; then
+        return 0
+    fi
+
+    if ! grep -Fq "$signature" "$file" 2>/dev/null; then
+        return 0
+    fi
+
+    awk -v start_regex="$start_regex" '
+        $0 ~ start_regex {
+            exit
+        }
+        { print }
+    ' "$file" > "$file.tmp"
+
+    if ! diff -q "$file" "$file.tmp" > /dev/null 2>&1; then
+        mv "$file.tmp" "$file"
+        info "Removed legacy unmarked Spine section from $label"
+    else
+        rm -f "$file.tmp"
+    fi
+}
+
 echo -e "\n${GREEN}── Hooks ──${NC}"
 mkdir -p ".codex/hooks"
 for hook in session-start.sh pre-tool-use.sh post-tool-use.sh stop.sh; do
@@ -130,6 +157,8 @@ echo -e "\n${GREEN}── AGENTS.md ──${NC}"
 SPINE_BEGIN="<!-- BEGIN PROJECT SPINE -->"
 SPINE_END="<!-- END PROJECT SPINE -->"
 
+strip_legacy_spine_tail_section "AGENTS.md" '^## Project Spine[[:space:]]*$' "This project has the Project Spine workflow framework installed." "AGENTS.md"
+
 if [ ! -f "AGENTS.md" ]; then
     cp "$SCRIPT_DIR/templates/AGENTS.md" "AGENTS.md"
     info "Created: AGENTS.md"
@@ -163,6 +192,8 @@ fi
 echo -e "\n${GREEN}── CLAUDE.md ──${NC}"
 CLAUDE_BEGIN="<!-- BEGIN PROJECT SPINE -->"
 CLAUDE_END="<!-- END PROJECT SPINE -->"
+
+strip_legacy_spine_tail_section "CLAUDE.md" '^## Project Context[[:space:]]*$' "This project uses **Project Spine** — a file-based planning workflow." "CLAUDE.md"
 
 if [ ! -f "CLAUDE.md" ]; then
     cp "$SCRIPT_DIR/templates/CLAUDE.md" "CLAUDE.md"

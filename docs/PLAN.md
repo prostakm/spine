@@ -69,10 +69,7 @@ The deliverable is a repository that users clone/install into their projects.
 ### Phase 7: AGENTS.md template
 - [ ] Create `templates/AGENTS.md` with:
       - explicit invocation rules
-      - workflow section with hard gates
-      - model routing section (per-phase model × effort)
-      - autonomy levels section (low/med/high behaviors)
-      - execution rules for structured hooks
+      - one or two sentences pointing to the installed skills
 - [ ] Ensure it stays under 32KB (Codex project_doc_max_bytes default)
 - [ ] Include markers for install script to merge with existing AGENTS.md
 - **Status:** pending

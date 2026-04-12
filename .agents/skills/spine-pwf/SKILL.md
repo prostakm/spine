@@ -26,6 +26,12 @@ SPEC (opt) ──► STOP ──► PLAN ──► STOP ──► IMPLEMENT ─�
 Use **spine-plan** skill for plan creation.
 Planning is complete when `plan.md` passes `.spine/scripts/validate-plan.sh`.
 
+### Workflow enforcement
+- SessionStart, Stop, and OpenCode review gates are enforced by hooks/plugins
+  outside this skill
+- Do not work around those guards or treat them as optional
+- If a hook or gate blocks progress, fix the workflow state instead of bypassing it
+
 ## Plan Review (Gate 2)
 
 After creating plan.md:
@@ -56,11 +62,17 @@ User adds `> [R]:` comments in plan.md, co-located with context:
 
 ## Implementation (after Gate 2)
 
+### Delegation discipline
+- Main thread owns approvals, integration decisions, and final user communication
+- Keep trivial edits on the main thread
+- If blocked or stuck, escalate to the user rather than spawning additional agents
+- Do not change the workflow shape: spec/brainstorm (optional) -> plan -> approval -> implement -> review
+
 ### Test-first sequence
 For all strategies: implement property tests FIRST, then production code.
 Properties in the plan are specifications. Implementation serves them.
 
-- **CORRECTNESS**: write tests from properties and fixture tables first,
+- **CORRECTNESS**: write tests from properties and approved conditional fixtures first,
   then implement until tests pass
 - **EQUIVALENCE**: capture equivalence anchor before changes, write
   preservation property test, then refactor, assert anchor holds

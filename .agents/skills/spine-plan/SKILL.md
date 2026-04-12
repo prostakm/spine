@@ -35,10 +35,12 @@ The plan has two zones separated by a trust boundary:
 
 **Above the trust boundary (human reviews):**
 
-- **Decisions**: every fork where the agent needs human judgment.
-  Format: Chosen / Over / Consequence. Max 7 — split if more.
+- **Decisions**: only forks that need human judgment or lock in behavior.
+  Start with one-line `Goal` and `Approach`. Format decisions as
+  Chosen / Over / Consequence. Max 7 — split if more.
 - **Spec + proof**: strategy-adaptive section. Include ONLY the block
-  matching the chosen strategy, delete the rest.
+  matching the chosen strategy, delete the rest. Prefer compact bullets,
+  explicit conditionals, and fenced fixtures over scaffolding.
 - **Properties**: present in every strategy block. The primary proof
   artifact. See Property extraction below.
 - **Contracts**: input/output types crossing boundaries. Skip for
@@ -46,18 +48,25 @@ The plan has two zones separated by a trust boundary:
 
 **Below the trust boundary (agent executes, proofs verify):**
 
-- **File manifest**: exact paths with create/modify/delete
+- **File manifest**: exact paths with create/modify/delete, touched
+  symbols, and what changes in each file
 - **Implementation strategy**: steps referencing decisions by number.
-  Phase if natural stages exist, flat if not.
-- **Test implementation notes**: framework, parametrize hints,
-  generation strategies
+  Phase if natural stages exist, flat if not. For every non-trivial
+  step, include a code snippet or pseudocode sketch.
+- **Test implementation notes**: exact test targets, framework,
+  parametrize hints, generation strategies, snapshot names
 - **Acceptance gate**: strategy-specific checklist, must include
-  property verification
+  property verification and concrete validation commands when known
+- The agent section must be executable from the plan alone. If an
+  implementation detail would otherwise require reopening the codebase,
+  spell it out here.
 
 ## Strategy-specific proof content
 
 ### CORRECTNESS
-- Rules with fixture tables (input / condition / expected)
+- Rules as explicit condition -> expectation cases. Use one-line
+  conditional fixtures for simple cases; use compact structured blocks
+  for complex conditionals.
 - Properties (invariants over input domain)
 - Snapshot anchors (outputs worth locking)
 - Edge cases
@@ -70,7 +79,9 @@ The plan has two zones separated by a trust boundary:
 
 ### STRUCTURAL
 - Architecture constraints (import rules, permission checks)
-- Boundary behavior table (request → expected status/shape)
+- Boundary cases as explicit request/context -> expected outcomes. Use
+  compact structured blocks if auth, flags, or state make the condition
+  non-trivial.
 - Smoke tests (wiring proofs)
 - Properties (structural invariants)
 
@@ -124,7 +135,7 @@ If the plan reveals the feature is too large or covers multiple concerns:
 
 - **low**: present 2-3 options, ASK user to pick. Ask about libs,
   patterns, scope.
-- **med**: choose best, show alternatives table. ASK about
+- **med**: choose best, show brief rejected options. ASK about
   architecture, new deps, API changes.
 - **high**: decide with rationale. ASK only on conflicts.
 
@@ -132,8 +143,12 @@ If the plan reveals the feature is too large or covers multiple concerns:
 - Bullet points over paragraphs
 - Short statements, not sentences
 - Code blocks for schemas/signatures/logic
-- Alternatives and risks as compact tables/lists
+- No tables in active plans. Encode conditionals directly in bullets or
+  compact structured blocks.
 - Delete unused strategy blocks from spec+proof — don't leave empty sections
 - Every property needs a category label and an AUTHOR marker
+- Above trust boundary: optimize for review speed and signal
+- Below trust boundary: optimize for implementation accuracy
+- File paths, symbols, commands in backticks
 
 See `docs/EXAMPLE-PLAN.md` for the expected style.

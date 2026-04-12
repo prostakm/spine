@@ -42,7 +42,7 @@ control how much the agent asks before acting.
 ## Acceptance Criteria
 
 - [ ] Running `./install.sh` in a fresh repo creates all `.spine/` and `.codex/` files
-- [ ] AGENTS.md is created (or appended to existing) with full workflow instructions
+- [ ] AGENTS.md is created (or appended to existing) with a short opt-in note that points workflow details to skills
 - [ ] Codex CLI recognizes spine-spec and spine-pwf as available skills
 - [ ] Creating a feature with `$spine-spec` produces spec.md in the correct location
 - [ ] Planning workflow creates plan.md/findings.md/log.md in the correct feature directory

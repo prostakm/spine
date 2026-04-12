@@ -248,6 +248,36 @@ remove_legacy_managed_instructions_block() {
     fi
 }
 
+strip_legacy_spine_tail_section() {
+    local file="$1" start_regex="$2" signature="$3" label="$4"
+    [ -f "$file" ] || return 0
+
+    if grep -Fq "<!-- BEGIN PROJECT SPINE -->" "$file" 2>/dev/null; then
+        return 0
+    fi
+
+    if ! grep -Fq "$signature" "$file" 2>/dev/null; then
+        return 0
+    fi
+
+    local tmp
+    tmp="$(mktemp)"
+
+    awk -v start_regex="$start_regex" '
+        $0 ~ start_regex {
+            exit
+        }
+        { print }
+    ' "$file" > "$tmp"
+
+    if ! cmp -s "$file" "$tmp"; then
+        mv "$tmp" "$file"
+        info "Removed legacy unmarked Spine section from $label"
+    else
+        rm -f "$tmp"
+    fi
+}
+
 remove_legacy_yaml_section() {
     local file="$1" section="$2"
     [ -f "$file" ] || return 0
@@ -566,6 +596,8 @@ AGENTS_TEMPLATE="$SCRIPT_DIR/templates/AGENTS.md"
 SPINE_BEGIN="<!-- BEGIN PROJECT SPINE -->"
 SPINE_END="<!-- END PROJECT SPINE -->"
 
+strip_legacy_spine_tail_section "AGENTS.md" '^## Project Spine[[:space:]]*$' "This project has the Project Spine workflow framework installed." "AGENTS.md"
+
 if [ -f "AGENTS.md" ]; then
     # Check if spine section already exists
     if grep -Fq "$SPINE_BEGIN" "AGENTS.md" 2>/dev/null; then
@@ -657,6 +689,8 @@ CLAUDE_TEMPLATE="$SCRIPT_DIR/templates/CLAUDE.md"
 CLAUDE_SPINE_BEGIN="<!-- BEGIN PROJECT SPINE -->"
 CLAUDE_SPINE_END="<!-- END PROJECT SPINE -->"
 
+strip_legacy_spine_tail_section "CLAUDE.md" '^## Project Context[[:space:]]*$' "This project uses **Project Spine** — a file-based planning workflow." "CLAUDE.md"
+
 if [ -f "CLAUDE.md" ]; then
     if grep -Fq "$CLAUDE_SPINE_BEGIN" "CLAUDE.md" 2>/dev/null; then
         info "Updating existing Project Spine section in CLAUDE.md..."
@@ -696,10 +730,10 @@ echo "    .codex/config.toml         ← Main-session Codex defaults"
 echo "    .codex/hooks.json          ← Codex hook configuration"
 echo "    .codex/hooks/              ← SessionStart and Stop hooks"
 echo "    .agents/skills/            ← spine-brainstorm, spine-plan, spine-pwf, spine-spec (Codex)"
-echo "    AGENTS.md                  ← Workflow instructions for Codex and OpenCode"
+echo "    AGENTS.md                  ← Minimal activation hint for Codex and OpenCode"
 echo "    .claude/skills/            ← spine-brainstorm, spine-plan, spine-pwf, spine-spec (Claude Code)"
 echo "    .claude/settings.json      ← Stop hook for Claude Code"
-echo "    CLAUDE.md                  ← Workflow instructions for Claude Code"
+echo "    CLAUDE.md                  ← Minimal activation hint for Claude Code"
 echo "    .opencode/plugins/spine.js ← Review gate enforcement and SessionStart (OpenCode)"
 echo "    opencode.json              ← OpenCode config (plugin reference + AGENTS.md natively)"
 echo ""

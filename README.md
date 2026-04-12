@@ -27,7 +27,7 @@ cd your-project
 The install script:
 - Creates `.spine/` with project tracking files and feature templates
 - Installs Codex skills and hooks
-- Creates or extends `AGENTS.md`
+- Creates or extends minimal `AGENTS.md` / `CLAUDE.md` pointers to the installed skills
 
 ## Quick Start
 

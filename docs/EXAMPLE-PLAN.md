@@ -19,10 +19,9 @@
 ## Decisions
 **Goal:** Net pay matches finance rules for every supported timesheet
 **Approach:** Centralize rounding in one calculator and prove with fixtures + properties
-| Alternative | Why rejected |
-|---|---|
-| Round per intermediate field | drifts from finance worksheet |
-**Risks:**
+**Rejected options (only if informative):**
+- Round per intermediate field - drifts from finance worksheet
+**Key risks (only if non-obvious):**
 - rule mismatch -> lock fixture table from finance examples
 
 ### D1: Rounding mode
@@ -33,10 +32,12 @@
 ## Spec + proof
 ### Rules
 **R1: Final-only rounding** - round once after tax and benefit totals
-| Input | Condition | Expected |
-|-------|-----------|----------|
-| 40h @ 25.125 | no deductions | 1005.00 |
-| 12h @ 19.995 | fixed tax 10% | 215.95 |
+```text
+when: hours=40, rate=25.125, deductions=[]
+then: net_pay=1005.00
+when: hours=12, rate=19.995, tax_mode=flat_10, deductions=[]
+then: net_pay=215.95
+```
 
 ### Properties
 <!-- AUTHOR: human -->
@@ -68,19 +69,42 @@ Money(cents: int, currency: str)
 
 ## Agent instructions
 ### File manifest
-| Action | Path | Notes |
-|--------|------|-------|
-| MODIFY | `payroll/calculator.py` | shared rounding logic |
-| MODIFY | `tests/test_payroll.py` | fixtures + properties |
+- `MODIFY payroll/calculator.py`
+  - symbols: `calculate_net_pay`, `Money.from_decimal`
+  - change: move rounding to final return path only
+- `MODIFY tests/test_payroll.py`
+  - symbols: `test_calculate_net_pay_fixtures`, `test_net_pay_properties`
+  - change: add worksheet fixtures and property coverage
 
 ### Implementation strategy
-1. Add failing fixture tests for D1
-2. Move rounding to final return path only
-3. Add property coverage for monotonicity and non-negative output
+1. `tests/test_payroll.py` - Add failing fixture tests for D1
+
+   ```python
+   @pytest.mark.parametrize("hours, rate, deductions, expected", [...])
+   def test_calculate_net_pay_fixtures(...):
+       assert calculate_net_pay(...).cents == expected
+   ```
+
+2. `payroll/calculator.py` - Move rounding to final return path only
+
+   ```python
+   gross = hours * rate
+   net = max(gross - tax_total - deduction_total, Decimal("0"))
+   return Money.from_decimal(net.quantize(CENTS, rounding=ROUND_HALF_EVEN))
+   ```
+
+3. `tests/test_payroll.py` - Add property coverage for monotonicity and non-negative output
+
+   ```python
+   @given(hours=..., rate=..., deductions=...)
+   def test_net_pay_never_negative(...):
+       assert calculate_net_pay(...).cents >= 0
+   ```
 
 ### Test implementation notes
 - parametrize finance worksheet cases
 - use decimal strategies with two to four fractional places
+- add `test_calculate_net_pay_fixtures` and `test_net_pay_never_negative`
 
 ### Acceptance gate
 - [ ] Property tests implemented (hypothesis with Decimal strategies)
@@ -108,10 +132,9 @@ Money(cents: int, currency: str)
 ## Decisions
 **Goal:** Admins can query recent audit events without direct DB access
 **Approach:** Add a thin HTTP endpoint over existing audit service
-| Alternative | Why rejected |
-|---|---|
-| expose raw table query | bypasses auth and response shaping |
-**Risks:**
+**Rejected options (only if informative):**
+- expose raw table query - bypasses auth and response shaping
+**Key risks (only if non-obvious):**
 - permission leak -> enforce admin check at route boundary
 
 ### D1: Authorization boundary
@@ -125,11 +148,9 @@ Money(cents: int, currency: str)
 - admin auth enforced before handler executes
 
 ### Boundary behavior
-| Request / input | Expected |
-|-----------------|----------|
-| valid admin token | 200 + JSON list |
-| missing auth | 401 |
-| non-admin user | 403 |
+- `when: GET /admin/audit?limit=20 + admin token -> then: 200 {"events": [...]}`
+- `when: GET /admin/audit?limit=20 + no auth -> then: 401`
+- `when: GET /admin/audit?limit=20 + non-admin token -> then: 403`
 
 ### Smoke tests
 - route exists in API registry
@@ -157,20 +178,45 @@ GET /admin/audit?limit=int
 
 ## Agent instructions
 ### File manifest
-| Action | Path | Notes |
-|--------|------|-------|
-| MODIFY | `internal/api/routes.go` | register route + middleware |
-| CREATE | `internal/api/admin_audit.go` | handler |
-| MODIFY | `internal/api/admin_audit_test.go` | boundary coverage |
+- `MODIFY internal/api/routes.go`
+  - symbols: `registerRoutes`, `requireAdmin`
+  - change: register `/admin/audit` behind admin middleware
+- `CREATE internal/api/admin_audit.go`
+  - symbols: `AdminAuditHandler`, `AdminAuditService`
+  - change: add handler that depends on audit service interface only
+- `MODIFY internal/api/admin_audit_test.go`
+  - symbols: `TestAdminAuditAuth`, `TestAdminAuditShape`
+  - change: cover 401/403/200 and dependency boundary
 
 ### Implementation strategy
-1. Add structural tests for route wiring and admin guard
-2. Implement handler against existing audit service interface
-3. Verify 401/403/200 behavior and JSON shape
+1. `internal/api/admin_audit_test.go` - Add structural tests for route wiring and admin guard
+
+   ```go
+   func TestAdminAuditAuth(t *testing.T) {
+       // no auth -> 401
+       // non-admin -> 403
+       // admin -> reaches handler
+   }
+   ```
+
+2. `internal/api/admin_audit.go` - Implement handler against existing audit service interface
+
+   ```go
+   type AdminAuditService interface {
+       ListRecent(ctx context.Context, limit int) ([]AuditEvent, error)
+   }
+   ```
+
+3. `internal/api/routes.go` - Wire route and verify JSON shape
+
+   ```go
+   admin.GET("/audit", requireAdmin(AdminAuditHandler(service)))
+   ```
 
 ### Test implementation notes
 - assert handler dependency is service interface
 - keep response snapshot small and stable
+- add `TestAdminAuditAuth` and `TestAdminAuditShape`
 
 ### Acceptance gate
 - [ ] Structural property tests pass (import/dependency assertions)
