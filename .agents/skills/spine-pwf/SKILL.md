@@ -41,8 +41,10 @@ Planning is complete when `plan.md` passes `.spine/scripts/validate-plan.sh`.
 After creating plan.md:
 
 > "Plan at `.spine/features/{slug}/plan.md`.
+> Budget: ~{N} min. Start with 🔴 decisions, then properties.
 > Review above the trust boundary — decisions, properties, contracts.
-> Properties are the proof: check they encode the right domain rules.
+> 🔴 GATE decisions need deep reading. 🟢 TRUST decisions are
+> covered by properties — skip unless the properties look wrong.
 > Mark properties you approve with `> [R]: ✓`.
 > Add `> [R]:` comments next to anything you want changed.
 > Mark `> [R]: APPROVED` when ready, or say `approved` / `plan approved` in chat.
@@ -121,11 +123,15 @@ Properties above the trust boundary are owned by the reviewer.
 - **high**: ask only on convention conflicts, 3-Strike
 
 ## Completion
-1. Acceptance gate complete (all properties pass, all checks done)
-2. Review manually or escalate to user
-3. Update `.spine/progress.md` → `done`
-4. Present findings.md `## Promote to Project` candidates
-5. Clear `.spine/active-feature` (write empty or remove file)
+1. Fill `### Agent self-review` in plan.md:
+   - Hardest: which decision was hardest to implement
+   - Least confident: what might be wrong
+   - Deviations: what differs from the plan and why
+2. Acceptance gate complete (all properties pass, all checks done)
+3. Review manually or escalate to user
+4. Update `.spine/progress.md` → `done`
+5. Present findings.md `## Promote to Project` candidates
+6. Clear `.spine/active-feature` (write empty or remove file)
 
 ## Cleanup (mid-flow reset)
 If user wants to start over or abandon current feature:

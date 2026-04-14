@@ -23,8 +23,12 @@ dependents: []
 - REQ-1: {testable requirement}
 - REQ-2: {testable requirement}
 
-## Out of Scope
-- {explicitly excluded}
+## Boundaries
+<!-- NOT: = exclusions (someone else's problem).
+     DO NOT: = anti-patterns (wrong approach, don't try it).
+     Each DO NOT eliminates an entire solution space. -->
+- NOT: {explicitly excluded}
+- DO NOT: {anti-pattern — eliminates a wrong approach}
 
 ## Inputs & Outputs
 - In: {what}
@@ -39,6 +43,9 @@ dependents: []
 ## Acceptance Criteria
 - [ ] {testable criterion}
 - [ ] {testable criterion}
+<!-- Include 1-2 trivially verifiable canaries:
+     concrete values, exact strings, specific status codes.
+     These calibrate trust in the rest of the implementation. -->
 
 ## Invariants
 <!-- Properties that must ALWAYS hold. Carried into plan's proof sketch.

@@ -164,3 +164,89 @@ func StartCleanup(ctx, repo, interval)
 |-------|---------|------------|
 
 <!-- REVIEW: PENDING — add comments inline with > [R]: your comment -->
+  // get cookie → sessions.Delete → clear cookie (MaxAge=-1)
+```
+
+`internal/api/routes.go` — modify — register /login, /logout
+
+Edge cases:
+- No user enumeration: same 401 for bad email and bad password
+- Cookie flags: httpOnly + Secure + SameSite=Strict
+- Reject non-JSON with 415
+
+Tests — `handler_test.go`:
+- valid login → 200 + cookie
+- wrong password → 401, no cookie
+- unknown email → 401, same message (no enumeration)
+- missing fields → 400
+- logout clears session and cookie
+- logout without cookie → 401
+
+**Verify:** `go test ./internal/auth/... -run TestHandler`
+**Status:** pending
+
+---
+
+### Phase 3: Session middleware
+
+`internal/auth/context.go` — create
+```go
+func ContextWithUser(ctx, *User) context.Context
+func UserFromContext(ctx) (*User, bool)  // nil,false if missing
+```
+
+`internal/auth/middleware.go` — create
+```go
+func RequireAuth(sessions, users) func(http.Handler) http.Handler
+  // get cookie → FindByToken → FindByID → inject user into ctx → next
+  // missing/expired/orphaned → 401 + clear cookie
+```
+
+`internal/api/routes.go` — modify — wrap protected routes
+
+Tests — `middleware_test.go`:
+- valid session → passes through, user in context
+- missing cookie → 401
+- expired session → 401 + cookie cleared
+- session with deleted user → 401 + session cleaned up
+
+**Verify:** `go test ./internal/auth/... -run TestMiddleware`
+**Status:** pending
+
+---
+
+### Phase 4: Cleanup + integration test
+
+`internal/auth/cleanup.go` — create
+```go
+func StartCleanup(ctx, repo, interval)
+  // ticker loop: repo.CleanExpired every interval
+  // stops on ctx.Done (server shutdown)
+```
+
+`cmd/server/main.go` — modify — start cleanup goroutine
+
+`internal/auth/integration_test.go` — create
+- full flow: login → access protected → logout → access denied
+- benchmark: FindByToken with 10k sessions < 5ms p99
+
+**Verify:** `go test ./internal/auth/... -count=1` + benchmark
+**Status:** pending
+
+---
+
+## Review Gate
+- Status: pending
+
+## State
+- Phase: planning
+
+## Decisions
+| Decision | Date | Rationale |
+|----------|------|-----------|
+
+## Errors
+| Error | Attempt | Resolution |
+|-------|---------|------------|
+
+<!-- REVIEW: PENDING — add comments inline with > [R]: your comment -->

@@ -16,49 +16,55 @@
 - Files in Play: `.spine/features/{slug}/plan.md`, `.spine/features/{slug}/spec.md`
 
 **Status:** DRAFT | REVIEW | ANNOTATED | APPROVED
-**Scope:** {one sentence - what changes, for whom}
-**Risk:** LOW | MEDIUM | HIGH - {one phrase justifying}
+**Scope:** {one sentence — what changes, for whom}
+**Risk:** LOW | MEDIUM | HIGH — {one phrase justifying}
 **Strategy:** CORRECTNESS | EQUIVALENCE | STRUCTURAL | REGRESSION
+**Budget:** ~{N} min review above trust boundary
 
 ---
 
 ## Decisions
 
-**Goal:** {what this delivers - one sentence}
+**Goal:** {what this delivers — one sentence}
+**Approach:** {technical strategy — 1-2 sentences}
+**Risks:** {risk} → {mitigation}
 
-**Approach:** {technical strategy - 1-2 sentences}
+<!-- POKA-YOKE: For each decision, ask: can a type,
+     linter rule, or shared utility make this decision
+     permanently unreviewable in future plans?
+     If yes, add it to conventions.md backlog. -->
 
-**Rejected options (only if informative):**
-- {alt} - {why not}
+### 🔴 D1: {decision title}
 
-**Key risks (only if non-obvious):**
-- {risk} -> {mitigation}
-
-### D1: {decision title}
-
-**Chosen:** {what}
-**Over:** {alt} - {why not}
-**Consequence:** {what this locks in}
+**Chose:** {what}
+**Over:** {alt} — {why not}
+**Locks:** {what this commits to}
+**Covered by:** {P1, P2 | acceptance gate | manual review}
 
 > ANNOTATION:
 
-<!-- Repeat D2, D3... Max 7. If more, split the feature. -->
+<!-- Repeat D2, D3... Max 7. If more, split the feature.
+     Triage: 🔴 GATE = irreversible, deep-read.
+             🟡 REVIEW = reversible but non-trivial.
+             🟢 TRUST = covered by proof, skip unless proof looks wrong. -->
 
 ---
 
 ## Spec + proof
 
 <!-- PROPERTY AUTHORSHIP RULE
-     Properties are the primary proof artifact. They live above the trust boundary
-     because the REVIEWER — not the agent — is responsible for their correctness.
+     Properties are the primary proof artifact. They live above the
+     trust boundary because the REVIEWER — not the agent — is
+     responsible for their correctness.
 
       - human:           reviewer wrote it. Trusted proof.
-      - human-validated: agent proposed it, reviewer confirmed with > [R]: ✓. Trusted.
-      - agent-proposed:  agent wrote it, not yet validated. NOT trusted as proof.
+      - human-validated: agent proposed, reviewer confirmed with > [R]: ✓
+      - agent-proposed:  agent wrote it, not yet validated. NOT trusted.
 
       Agent implements property tests below the trust boundary.
-      Agent MUST NOT modify human-authored property statements during implementation.
-      If implementation reveals a property is wrong → STOP, propose revision, wait for > [R]: approval.
+      Agent MUST NOT modify human-authored property statements.
+      If implementation reveals a property is wrong → STOP, propose
+      revision, wait for > [R]: approval.
 -->
 
 <!-- Delete the blocks that don't match your strategy. -->
@@ -67,13 +73,11 @@
 
 ### Rules
 
-**R1: {rule}** - {plain English}
+**R1: {rule}** — {plain English}
 
 ```text
-when: {compact condition}
-then: {expected behavior}
-when: {compact condition}
-then: {expected behavior}
+{input conditions} → {expected}
+{input conditions} → {expected}
 ```
 
 ```yaml
@@ -98,6 +102,19 @@ then:
 
 - {specific scenario}
 
+### Logic sketch (optional — procedural decisions only)
+
+<!-- Use when behavior has embedded decisions that can't be
+     expressed as input→output fixtures. Drop obvious logic
+     with `...`, annotate decisions with `#`. -->
+
+```text
+{function_name}({args}) -> {return}:
+  ...{obvious setup}...
+  {THE DECISION LINE}  # ← why this matters
+  ...{obvious wiring}...
+```
+
 <!-- EQUIVALENCE -->
 
 ### Equivalence anchor
@@ -109,11 +126,11 @@ then:
 ### Existing suite
 
 **All tests in** {scope} **pass unmodified.**
-If any assertion changes -> escalate.
+If any assertion changes → escalate.
 
 ### Properties
 <!-- AUTHOR: human | human-validated | agent-proposed -->
-- **P1:** preservation: {output for all valid inputs is identical before and after}
+- **P1:** preservation: {identical before and after}
 
 ### Delta (perf only)
 
@@ -127,9 +144,12 @@ If any assertion changes -> escalate.
 
 ### Boundary behavior
 
-- `when: {request + context} -> then: {status + shape}`
-- `when: {request + context} -> then: {status}`
-- `when: {request + context} -> then: {status}`
+```text
+{METHOD} {path}:
+  {condition}    → {status + shape}
+  {condition}    → {status}
+  {condition}    → {status}
+```
 
 ### Smoke tests
 
@@ -164,25 +184,32 @@ If any assertion changes -> escalate.
 
 <!-- Skip for EQUIVALENCE and REGRESSION unless interfaces change. -->
 
+### Data flow
+
+```text
+{source} → {transform} → {destination}
+```
+
 ### Inputs
 
 ```text
-{types - dataclass, TypedDict, or plain signature}
+{name}: {type}  # {constraint}
+{name}: {type}  # {constraint}
 ```
 
 ### Outputs
 
 ```text
-{types}
+{name}: {type}  # {constraint}
 ```
 
 ### Side effects
 
-- {DB write, event, external call}
+- ⚠ {DB write, event, external call}
 
 ---
 
-<!-- TRUST BOUNDARY - reviewer stops here -->
+<!-- TRUST BOUNDARY — reviewer stops here -->
 
 ## Agent instructions
 
@@ -194,26 +221,32 @@ If any assertion changes -> escalate.
 - `MODIFY path/to/file`
   - symbols: `{existing symbol}`, `{new helper}`
   - change: {what changes in this file}
+- `DELETE path/to/file` (if applicable)
+  - reason: {why removed}
 
 ### Implementation strategy
 
-1. `{path or symbol}` - {step referencing D1}
+<!-- Steps reference decisions by number. Phase if natural
+     stages exist, flat if not. For non-trivial steps:
+     logic sketch with ... elision, # annotations on
+     decision-carrying lines. -->
+
+1. `{path or symbol}` — {step referencing D1}
 
    ```text
-   {code snippet or pseudocode for the non-trivial part}
+   {logic sketch or pseudocode for the non-trivial part}
    ```
 
-2. `{path or symbol}` - {step referencing D2}
+2. `{path or symbol}` — {step referencing D2}
 
    ```text
-   {code snippet or pseudocode for the non-trivial part}
+   {logic sketch or pseudocode for the non-trivial part}
    ```
 
 ### Test implementation notes
 
 - {parametrize, property framework hints, snapshot format}
-- {property framework for this stack: hypothesis (Python), fast-check (JS/TS),
-  jqwik (Java), rapid (Go), FsCheck (.NET), QuickCheck (Haskell)}
+- {framework: hypothesis | fast-check | jqwik | rapid | FsCheck | QuickCheck}
 - {exact test names or suites to add/update}
 
 ### Acceptance gate
@@ -223,15 +256,21 @@ If any assertion changes -> escalate.
 - [ ] No property statements modified without reviewer approval
 - [ ] {strategy-specific checks}
 
+### Agent self-review (fill after implementation)
+
+- Hardest: {which decision was hardest to implement}
+- Least confident: {what might be wrong}
+- Deviations: {what differs from the plan and why}
+
 ---
 
 ## Decisions log
-- {date} - {decision} - {rationale}
+- {date} — {decision} — {rationale}
 
 ## Errors
-- {error} - attempt: {attempt} - resolution: {resolution}
+- {error} — attempt: {attempt} — resolution: {resolution}
 
-<!-- REVIEW: PENDING - add > [R]: comments inline, mark > [R]: APPROVED when done, or explicitly approve in chat and mirror it here -->
+<!-- REVIEW: PENDING — add > [R]: comments inline, mark > [R]: APPROVED when done, or explicitly approve in chat and mirror it here -->
 
 ## Review Gate
 - Status: pending

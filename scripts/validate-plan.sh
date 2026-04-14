@@ -85,6 +85,40 @@ if grep -qE '^### Properties' "$PLAN" && ! grep -qE '<!-- AUTHOR:' "$PLAN"; then
     errors=$((errors + 1))
 fi
 
+# New-format-only checks (skip for legacy)
+if ! grep -qE '^### Phase [0-9]' "$PLAN"; then
+
+    # Budget field (warning, not error)
+    if ! grep -qE '^\*\*Budget:\*\*' "$PLAN"; then
+        echo "NOTE: Missing **Budget:** line" >&2
+    fi
+
+    # Trust boundary marker
+    if ! grep -q "TRUST BOUNDARY" "$PLAN"; then
+        echo "Missing trust boundary marker" >&2
+        errors=$((errors + 1))
+    fi
+
+    # Triage markers on decisions (warning, not error)
+    if ! grep -qE '^### [🔴🟡🟢]' "$PLAN" 2>/dev/null; then
+        echo "NOTE: No triage markers on decisions" >&2
+    fi
+
+    # Max 7 triage-marked decisions
+    triage_count="$(grep -cE '^### [🔴🟡🟢]' "$PLAN" 2>/dev/null || true)"
+    triage_count="${triage_count:-0}"
+    if [ "$triage_count" -gt 7 ]; then
+        echo "Too many triage-marked decisions (${triage_count}) — split the feature" >&2
+        errors=$((errors + 1))
+    fi
+
+    # Agent self-review section (warning, not error — filled post-impl)
+    if ! grep -qE '^### Agent self-review' "$PLAN"; then
+        echo "NOTE: Missing ### Agent self-review section" >&2
+    fi
+
+fi
+
 if [ "$errors" -gt 0 ]; then
     echo "" >&2
     echo "Validation failed: ${errors} error(s)" >&2

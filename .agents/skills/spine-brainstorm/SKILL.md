@@ -24,7 +24,13 @@ Turn an idea into a short, approved design that is clear enough to hand off to
 
 ## Workflow
 
-### 0. Bootstrap (run once at start)
+### 0a. Thumbnail (before creating files)
+- State in 3 lines: what, why, blast radius
+- Confirm direction with user before investing in full spec
+- If user says "wrong direction" → no files were created, pivot cheaply
+- Skip for features where user already gave detailed context
+
+### 0b. Bootstrap (run once at start)
 - Determine the feature slug in kebab-case from the user's request
 - If slug is unclear, ask the user for one word/phrase
 - Write the slug to `.spine/active-feature`
@@ -91,6 +97,10 @@ Turn an idea into a short, approved design that is clear enough to hand off to
   ```
 
 ### 4. Present the design
+- Before writing the design, run a quick pre-mortem:
+  "Imagine this shipped and failed — what went wrong?"
+  List 3 failure modes → these become constraints,
+  edge cases, or invariants in the spec
 - Present a concise design covering:
   - problem and user outcome
   - requirements and non-goals
@@ -111,10 +121,10 @@ Turn an idea into a short, approved design that is clear enough to hand off to
   planner select proof strategy. Use category labels:
   range, relational, stability, preservation, structural.
   If no invariants emerged during brainstorming, ask:
-  "What must always be true about this feature, for any valid input?". Use category labels:
-  range, relational, stability, preservation, structural.
-  If no invariants emerged during brainstorming, ask:
   "What must always be true about this feature, for any valid input?"
+- Include `## Boundaries` with both `NOT:` exclusions and `DO NOT:`
+  anti-patterns. Anti-patterns from the pre-mortem and discussion
+  belong here.
 - **Splitting**: if the feature covers multiple independent concerns, propose splitting:
   1. Keep the primary concern in the current feature
   2. Create new feature dirs with spec.md containing YAML frontmatter `dependencies` referencing the current slug

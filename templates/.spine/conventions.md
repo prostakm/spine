@@ -1,5 +1,12 @@
 # Conventions
 
+## Sterile Zones
+<!-- Paths/domains where ANY plan decision is automatically
+     🔴 GATE — deep review required regardless of triage.
+     Agent stops and asks on ANY ambiguity in these zones.
+     Edit this list per project. -->
+- {e.g., auth/, payments/, migrations/, PII handling}
+
 ## Active
 - {convention 1}
 - {convention 2}

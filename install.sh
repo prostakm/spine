@@ -573,6 +573,11 @@ chmod +x ".spine/scripts/validate-plan.sh" 2>/dev/null || true
 sync_managed_file "$SCRIPT_DIR/scripts/cleanup-features.sh" ".spine/scripts/cleanup-features.sh"
 chmod +x ".spine/scripts/cleanup-features.sh" 2>/dev/null || true
 
+# Reference docs used by Spine skills
+mkdir -p "docs"
+sync_managed_file "$SCRIPT_DIR/docs/EXAMPLE-PLAN.md" "docs/EXAMPLE-PLAN.md"
+sync_managed_file "$SCRIPT_DIR/docs/EXAMPLE-PLAN-LEGACY.md" "docs/EXAMPLE-PLAN-LEGACY.md"
+
 # ── Step 2: Copy Codex config.toml (merge if exists) ──
 SPINE_CONFIG_BLOCK_BEGIN="# BEGIN PROJECT SPINE CONFIG"
 SPINE_CONFIG_BLOCK_END="# END PROJECT SPINE CONFIG"
@@ -755,6 +760,7 @@ echo "    .spine/conventions.md      ← Edit: add your coding conventions"
 echo "    .spine/progress.md         ← Auto-updated as features complete"
 echo "    .spine/config.yaml         ← Set autonomy: low|med|high"
 echo "    .spine/features/_template/ ← Spec, plan, and optional findings/log templates"
+echo "    docs/EXAMPLE-PLAN*.md      ← Managed example plans referenced by Spine skills"
 echo "    .codex/config.toml         ← Main-session Codex defaults"
 echo "    .codex/hooks.json          ← Codex hook configuration"
 echo "    .codex/hooks/              ← SessionStart and Stop hooks"

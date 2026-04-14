@@ -37,7 +37,10 @@ The plan has two zones separated by a trust boundary:
 
 - **Decisions**: only forks that need human judgment or lock in behavior.
   Start with one-line `Goal` and `Approach`. Format decisions as
-  Chosen / Over / Consequence. Max 7 — split if more.
+  Chose / Over / Locks / Covered by. Prefix each decision heading
+  with a triage marker: 🔴 GATE (irreversible, deep-read),
+  🟡 REVIEW (reversible, non-trivial), 🟢 TRUST (covered by proof).
+  Max 7 decisions — split if more.
 - **Spec + proof**: strategy-adaptive section. Include ONLY the block
   matching the chosen strategy, delete the rest. Prefer compact bullets,
   explicit conditionals, and fenced fixtures over scaffolding.
@@ -64,12 +67,15 @@ The plan has two zones separated by a trust boundary:
 ## Strategy-specific proof content
 
 ### CORRECTNESS
-- Rules as explicit condition -> expectation cases. Use one-line
-  conditional fixtures for simple cases; use compact structured blocks
-  for complex conditionals.
+- Rules: fixture arrow notation for simple cases
+  (`{input} → {expected}`); yaml blocks for complex
+  conditionals with multiple interacting fields
 - Properties (invariants over input domain)
 - Snapshot anchors (outputs worth locking)
 - Edge cases
+- Logic sketch: optional, only when procedural logic has
+  embedded decisions not captured by fixtures. Use `...`
+  for obvious parts, `#` annotations on decision lines.
 
 ### EQUIVALENCE
 - Equivalence anchor (what must not change, at what granularity)
@@ -79,11 +85,23 @@ The plan has two zones separated by a trust boundary:
 
 ### STRUCTURAL
 - Architecture constraints (import rules, permission checks)
-- Boundary cases as explicit request/context -> expected outcomes. Use
-  compact structured blocks if auth, flags, or state make the condition
-  non-trivial.
+- Boundary behavior: endpoint shorthand grouped by endpoint
+  ```
+  GET /path:
+    condition → status + shape
+    condition → status
+  ```
 - Smoke tests (wiring proofs)
 - Properties (structural invariants)
+
+## Structural enforcement prompt
+
+After drafting decisions, ask for each one:
+"Can a type, linter rule, or shared utility make this
+decision permanently unreviewable in future plans?"
+If yes → note in the decision's Locks line and propose
+a conventions.md entry. Each answer removes one item
+from every future plan's review surface.
 
 ### REGRESSION
 - Reproduction (test, expected, actual)
@@ -142,13 +160,42 @@ If the plan reveals the feature is too large or covers multiple concerns:
 ## Style
 - Bullet points over paragraphs
 - Short statements, not sentences
-- Code blocks for schemas/signatures/logic
-- No tables in active plans. Encode conditionals directly in bullets or
-  compact structured blocks.
+- First line of each section = its conclusion (BLUF)
 - Delete unused strategy blocks from spec+proof — don't leave empty sections
 - Every property needs a category label and an AUTHOR marker
 - Above trust boundary: optimize for review speed and signal
 - Below trust boundary: optimize for implementation accuracy
 - File paths, symbols, commands in backticks
+
+### Notation choices
+- Data/control flow: `a → b → c` (inline, one line)
+- Test fixtures: `{input} → {expected}` (one line per case)
+- Domain invariants: `- **P1:** {category}: {ALWAYS/NEVER statement}`
+- Endpoint behavior: grouped by endpoint, one line per case
+- Data shapes: colon-aligned `name: type  # constraint`
+- Alternatives: Chose/Over/Locks (not prose paragraphs)
+- Side effects: `⚠` marker prefix
+- Branching (2-3 paths): `condition? Y → x / N → y`
+- File manifest: `CREATE/MODIFY/DELETE path` prefix
+- Metadata: key-value pairs, not tables
+
+### When to use logic sketches
+- ONLY for procedural logic with embedded decisions that
+  can't be expressed as input→output fixtures
+- Use `...` to elide obvious/framework logic
+- Use `#` annotations for the decision-carrying lines
+- Use `GUARD:` for boundary conditions
+- Use `⚠` for side effects within sketches
+- Use `NOT THIS: x / THIS: y` when wrong approach is obvious
+- One sketch per component, not per function
+- If fixture arrows + ALWAYS/NEVER cover the concept, prefer
+  those — logic sketches are for the gap between them
+
+### Tables
+- Avoid tables in plans. Use fixture arrows, endpoint shorthand,
+  key-value pairs, or indented trees instead.
+- Tables only when >4 columns are genuinely needed AND
+  all columns fit within 80 chars total.
+- No table in the plan should exceed 80 characters wide.
 
 See `docs/EXAMPLE-PLAN.md` for the expected style.

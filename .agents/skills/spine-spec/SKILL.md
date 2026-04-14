@@ -57,12 +57,14 @@ Concerns to probe:
 
 **Both roles always ask:**
 - What is explicitly NOT in scope?
+- What approaches should the agent NOT try?
+  (These become `## Boundaries` → `DO NOT:` entries)
 - Dependencies on other features?
 - Acceptance criteria — how do we verify it works?
 - What type of change is this? (new logic, refactor, new endpoint,
   bugfix, performance, infrastructure)
-- What must ALWAYS be true, for ANY valid input? (These become properties in the plan.)
-- What must ALWAYS be true, for ANY valid input? (These become properties in the plan.)
+- What must ALWAYS be true, for ANY valid input?
+  (These become properties in the plan.)
 
 ### Step 3: Elicit requirements
 Read autonomy from `.spine/config.yaml`:
@@ -94,6 +96,15 @@ Use explorer findings to make questions specific:
   3. Move split-off features to backlog: `scripts/spine-backlog.sh move <slug>`
   4. The current feature's `dependents` list is auto-updated with backreferences
 - No implementation details
+
+### Step 4b: Teach-back (medium+ features)
+- Summarize understanding of the feature in 3-5 sentences
+- Include: what changes, who it affects, what must not break
+- Present to user: "Before I hand this off to planning,
+  here's my understanding — correct anything that's off"
+- If user corrects → update spec, re-summarize
+- If user confirms → proceed to Step 5
+- Skip for LOW risk / trivial features
 
 ### Step 5: STOP (Gate 1)
 Update `.spine/progress.md` → status `specced`. Tell user:
