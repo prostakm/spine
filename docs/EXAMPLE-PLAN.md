@@ -11,6 +11,15 @@
 - Progress: `.spine/progress.md`
 - Spec: `.spine/features/payroll-rounding/spec.md`
 
+## Resume
+- Source: plan
+- Phase: review
+- Gate: pending
+- Current Slice: validate proof artifacts and reviewer annotations for payroll rounding
+- Next Step: address inline `> [R]:` comments and collect approval
+- Open Questions: none
+- Files in Play: `.spine/features/payroll-rounding/plan.md`, `.spine/features/payroll-rounding/spec.md`
+
 **Status:** REVIEW
 **Scope:** Correct net-pay rounding for hourly payroll exports
 **Risk:** MEDIUM - touches money math
@@ -123,6 +132,15 @@ Money(cents: int, currency: str)
 - Conventions: `.spine/conventions.md`
 - Progress: `.spine/progress.md`
 - Spec: `.spine/features/admin-audit-endpoint/spec.md`
+
+## Resume
+- Source: plan
+- Phase: implementation
+- Gate: approved
+- Current Slice: wire the route and prove the admin boundary
+- Next Step: implement the handler against the audit service interface
+- Open Questions: none
+- Files in Play: `.spine/features/admin-audit-endpoint/plan.md`, `.spine/features/admin-audit-endpoint/spec.md`
 
 **Status:** REVIEW
 **Scope:** Add admin-only audit-log read endpoint

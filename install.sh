@@ -340,6 +340,34 @@ remove_legacy_yaml_section() {
     fi
 }
 
+ensure_codex_hooks_flag() {
+    local config_file="$1"
+    if [ -f "$config_file" ] && ! grep -q "codex_hooks" "$config_file" 2>/dev/null; then
+        if grep -q '^\[features\]' "$config_file" 2>/dev/null; then
+            awk '
+                BEGIN { inserted = 0 }
+                /^\[features\]/ {
+                    print
+                    if (!inserted) {
+                        print "codex_hooks = true"
+                        inserted = 1
+                    }
+                    next
+                }
+                { print }
+            ' "$config_file" > "$config_file.tmp"
+            mv "$config_file.tmp" "$config_file"
+        else
+            cat >> "$config_file" << 'TOML'
+
+[features]
+codex_hooks = true
+TOML
+        fi
+        info "Enabled codex hooks in: $config_file"
+    fi
+}
+
 ensure_yaml_top_level_key() {
     local file="$1" key="$2" line="$3"
     [ -f "$file" ] || return 0
@@ -563,6 +591,7 @@ if [ -f ".codex/config.toml" ]; then
     remove_legacy_spine_config_block ".codex/config.toml"
     remove_legacy_managed_instructions_block ".codex/config.toml"
     upsert_marked_block ".codex/config.toml" "$SPINE_CONFIG_BLOCK_BEGIN" "$SPINE_CONFIG_BLOCK_END" "$SPINE_CONFIG_BLOCK_FILE"
+    ensure_codex_hooks_flag ".codex/config.toml"
     info "Updated managed Spine block in .codex/config.toml"
 else
     copy_if_missing "$SCRIPT_DIR/templates/.codex/config.toml" ".codex/config.toml"

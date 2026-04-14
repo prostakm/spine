@@ -26,6 +26,25 @@ function readPlan(p) {
   return existsSync(p) ? readFileSync(p, "utf8") : null
 }
 
+function pickResumeFile(root, slug) {
+  const plan = planPath(root, slug)
+  const spec = specPath(root, slug)
+  const planContent = readPlan(plan)
+  const specContent = readPlan(spec)
+
+  if (!planContent && !specContent) return null
+
+  if (planContent) {
+    const preferred = fieldValue(planContent, "Resume", "Source")
+    if (preferred === "spec" && specContent) {
+      return { source: "spec", path: spec, content: specContent }
+    }
+    return { source: "plan", path: plan, content: planContent }
+  }
+
+  return { source: "spec", path: spec, content: specContent }
+}
+
 function normalizePath(filePath, root) {
   if (!filePath) return null
   return filePath.startsWith("/") ? filePath : join(root, filePath)
@@ -317,18 +336,30 @@ export const SpinePlugin = async ({ directory, client }) => {
       const slug = readSlug(root)
       if (!slug) return
 
-      const plan = planPath(root, slug)
-      const content = readPlan(plan)
-      if (!content) return
+      const resume = pickResumeFile(root, slug)
+      if (!resume) return
 
-      const approved = planIsApproved(content)
-      const phase = fieldValue(content, "State", "Phase") ?? "unknown"
-      const gate = approved ? "approved" : "pending"
-      const slice = extractSection(content, "Current Slice")
+      const phase = fieldValue(resume.content, "Resume", "Phase")
+        ?? (resume.source === "plan" ? fieldValue(resume.content, "State", "Phase") : null)
+        ?? (resume.source === "spec" ? "spec" : null)
+        ?? "unknown"
+      const gate = fieldValue(resume.content, "Resume", "Gate")
+        ?? (resume.source === "plan"
+          ? (planIsApproved(resume.content) ? "approved" : fieldValue(resume.content, "Review Gate", "Status"))
+          : "pending")
+        ?? "pending"
+      const slice = fieldValue(resume.content, "Resume", "Current Slice")
+        ?? extractSection(resume.content, "Current Slice")
+        ?? (resume.source === "spec" ? "review the active spec and decide if it is ready for planning" : null)
+      const next = fieldValue(resume.content, "Resume", "Next Step")
+        ?? (resume.source === "spec" ? `approve the spec or run $spine-pwf ${slug} when ready to plan` : null)
+
+      const parts = [`[spine] ${slug}`, `source: ${resume.source}`, `phase: ${phase}`, `gate: ${gate}`]
+      if (next) parts.push(`next: ${next}`)
 
       const msg = slice
-        ? `[spine] ${slug} | ${phase} | gate: ${gate}\n${slice}`
-        : `[spine] ${slug} | ${phase} | gate: ${gate} | plan: ${plan}`
+        ? `${parts.join(" | ")}\n${slice}`
+        : `${parts.join(" | ")} | file: ${resume.path}`
 
       console.log(msg)
     },

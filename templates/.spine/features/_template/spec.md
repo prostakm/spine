@@ -7,6 +7,15 @@ dependents: []
 
 **Role:** {product-owner | architect}
 
+## Resume
+- Source: spec
+- Phase: spec
+- Gate: pending
+- Current Slice: refine requirements, scope, and invariants
+- Next Step: approve the spec or request changes before planning
+- Open Questions: {current open question or none}
+- Files in Play: `.spine/features/{slug}/spec.md`
+
 ## Problem
 {What's broken or missing — one paragraph.}
 

@@ -21,6 +21,8 @@ SPEC (opt) ──► STOP ──► PLAN ──► STOP ──► IMPLEMENT ─�
 1. Read `.spine/project.md`, `.spine/conventions.md`, `.spine/progress.md`
 2. Determine slug (kebab-case), write to `.spine/active-feature`
 3. Create `.spine/features/{slug}/` from `_template/`
+4. Keep `## Resume` current in the active `spec.md` or `plan.md`.
+   It is the fresh-session handoff; keep it short and phase-accurate.
 
 ## Planning phase
 Use **spine-plan** skill for plan creation.
@@ -110,7 +112,7 @@ Properties above the trust boundary are owned by the reviewer.
 2. If the approved plan is incomplete or contradicted by the codebase,
    STOP and revise before coding
 3. **2-Action Rule**: after every 2 view/search/read ops → update findings.md
-4. On each completed step: update acceptance checks, update log.md
+4. On each completed step: update acceptance checks, `## Resume`, and log.md
 5. **3-Strike errors**: diagnose → alternative → rethink → escalate to user
 
 ### Decision questions during implementation
@@ -135,8 +137,10 @@ If user wants to start over or abandon current feature:
 
 ## Session Recovery
 1. `.spine/active-feature` → slug
-2. plan.md → current state and implementation status
-3. findings.md + log.md → context
-4. `git diff --stat` → changes
-5. Check for unaddressed `> [R]:` → address first
-6. Resume — do NOT recreate plan
+2. Read only the active file's `## Resume` block first
+3. Load the primary file from `- Source:` (`spec.md` while speccing,
+   `plan.md` once planning/execution starts)
+4. Load `findings.md` / `log.md` only if the phase or blocker needs deeper history
+5. `git diff --stat` → changes when code may already exist
+6. Check for unaddressed `> [R]:` only when the plan gate is pending
+7. Resume — do NOT recreate plan/spec

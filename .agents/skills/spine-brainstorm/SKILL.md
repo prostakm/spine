@@ -34,6 +34,15 @@ Turn an idea into a short, approved design that is clear enough to hand off to
 ```markdown
 # Feature: {slug}
 
+## Resume
+- Source: spec
+- Phase: spec
+- Gate: pending
+- Current Slice: clarify intent and converge on one design
+- Next Step: ask the next highest-value question
+- Open Questions: first unanswered design question
+- Files in Play: `.spine/features/{slug}/spec.md`
+
 ## Status
 - Brainstorm: in_progress
 - Design: draft
@@ -62,6 +71,8 @@ Turn an idea into a short, approved design that is clear enough to hand off to
   ### Q: [question]
   A: [answer]
   ```
+- After each Q&A exchange, refresh `## Resume` so a fresh session can pick up
+  with the latest current slice and next step.
 
 ### 3. Compare approaches
 - Present 2-3 viable approaches with tradeoffs
@@ -91,6 +102,7 @@ Turn an idea into a short, approved design that is clear enough to hand off to
 - Get user approval before writing the spec
 - Explicit chat approval (`approved`, `spec approved`, `I approve`) counts here
 - After approval, update `## Proposed Design` status to `Status: approved`
+- Update `## Resume` to reflect whether the next action is re-review or spec write-up
 
 ### 5. Write the spec
 - Consolidate the approved design into `## Spec` in spec.md
@@ -116,6 +128,7 @@ Turn an idea into a short, approved design that is clear enough to hand off to
   - Spec: approved
   ```
 - Mirror any explicit chat approval into these status fields before handoff
+- Update `## Resume` to point at planning handoff (`Phase: planning`, `Next Step: run $spine-pwf {slug}`)
 - After writing, quickly self-check for placeholders, contradictions, and
   ambiguity
 

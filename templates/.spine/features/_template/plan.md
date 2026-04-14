@@ -6,6 +6,15 @@
 - Progress: `.spine/progress.md`
 - Spec: `.spine/features/{slug}/spec.md` (if present)
 
+## Resume
+- Source: plan
+- Phase: planning
+- Gate: pending
+- Current Slice: draft the review artifacts above the trust boundary
+- Next Step: validate the plan and collect review approval
+- Open Questions: none
+- Files in Play: `.spine/features/{slug}/plan.md`, `.spine/features/{slug}/spec.md`
+
 **Status:** DRAFT | REVIEW | ANNOTATED | APPROVED
 **Scope:** {one sentence - what changes, for whom}
 **Risk:** LOW | MEDIUM | HIGH - {one phrase justifying}

@@ -39,6 +39,7 @@ check_section() {
 }
 
 check_section "Context"
+check_section "Resume"
 check_section "Decisions"
 check_section "Spec + proof"
 check_section "Agent instructions"

@@ -12,11 +12,13 @@ control how much the agent asks before acting.
 - REQ-1: Per-feature file isolation — each feature gets its own plan/findings/log
   in `.spine/features/{slug}/`, preventing cross-feature contamination.
 - REQ-2: Project-level tracking — three small files (project.md, conventions.md,
-  progress.md) maintain continuity across features, totaling ≤700 tokens always-loaded.
+  progress.md) maintain continuity across features while staying small enough for
+  targeted on-demand reads.
 - REQ-3: Single autonomy flag — `config.yaml` contains `autonomy: low|med|high`
   controlling approval cadence (action-level / plan-level / boundary-based).
 - REQ-4: Session resilience — after `/clear` or new session, the agent recovers
-  full context from on-disk files without user re-explanation.
+  the active feature from a compact on-disk resume block, then loads deeper files
+  only when the current phase requires them.
 - REQ-5: Convention enforcement — agent reads `.spine/conventions.md` before
   implementation and flags conflicts rather than silently deviating.
 - REQ-6: Spec creation skill — optional `$spine-spec` skill for fleshing out

@@ -78,6 +78,7 @@ Use explorer findings to make questions specific:
 ### Step 4: Create spec file
 - Slug (kebab-case) → `.spine/active-feature`
 - Write `.spine/features/{slug}/spec.md`
+- Keep `## Resume` current with a short phase, current slice, and next step
 - Include YAML frontmatter with `dependencies: []` and `dependents: []`
 - Tag the role used: `**Role:** product-owner` or `**Role:** architect`
 - Include `## Change type` and `## Invariants` when known

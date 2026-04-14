@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Project Spine: SessionStart hook
-# Emits structured recovery context for startup/resume events.
+# Emits compact recovery state for startup/resume events.
 
 set -euo pipefail
 
@@ -23,37 +23,115 @@ emit_context() {
     printf '{"hookSpecificOutput":{"hookEventName":"SessionStart","additionalContext":"%s"}}\n' "$(json_escape "$message")"
 }
 
-append_excerpt() {
+section_field() {
     local file="$1"
-    local max_lines="$2"
+    local heading="$2"
+    local field="$3"
     [ -f "$file" ] || return 0
 
-    local excerpt
-    excerpt="$(sed -n "1,${max_lines}p" "$file" 2>/dev/null || true)"
-    [ -n "$excerpt" ] || return 0
+    awk -v heading="$heading" -v field="$field" '
+        $0 == "## " heading { in_section = 1; next }
+        in_section && /^## / { exit }
+        in_section && $0 ~ ("^[[:space:]]*-[[:space:]]*" field ":[[:space:]]*") {
+            sub("^[[:space:]]*-[[:space:]]*" field ":[[:space:]]*", "", $0)
+            print
+            exit
+        }
+    ' "$file" 2>/dev/null || true
+}
 
-    CONTEXT="${CONTEXT}--- ${file} ---"$'\n'"${excerpt}"$'\n\n'
+legacy_plan_phase() {
+    local file="$1"
+    [ -f "$file" ] || return 0
+
+    awk '
+        /^## State$/ { in_state = 1; next }
+        in_state && /^## / { exit }
+        in_state && /^[[:space:]]*-[[:space:]]*Phase:[[:space:]]*/ {
+            sub(/^[[:space:]]*-[[:space:]]*Phase:[[:space:]]*/, "", $0)
+            print
+            exit
+        }
+    ' "$file" 2>/dev/null || true
+}
+
+line_if_present() {
+    local label="$1"
+    local value="$2"
+    [ -n "$value" ] || return 0
+    CONTEXT="${CONTEXT}${label}: ${value}"$'\n'
 }
 
 [ -d "$SPINE_DIR" ] || exit 0
 
-CONTEXT="Project Spine session context"$'\n\n'
-
-append_excerpt "${SPINE_DIR}/project.md" 40
-append_excerpt "${SPINE_DIR}/conventions.md" 40
-append_excerpt "${SPINE_DIR}/progress.md" 40
+CONTEXT=""
 
 if [ -f "$ACTIVE_FILE" ]; then
     SLUG="$(tr -d '[:space:]' < "$ACTIVE_FILE" 2>/dev/null || true)"
     if [ -n "$SLUG" ]; then
-        CONTEXT="${CONTEXT}Active feature: ${SLUG}"$'\n\n'
-        append_excerpt "${SPINE_DIR}/features/${SLUG}/spec.md" 40
-        append_excerpt "${SPINE_DIR}/features/${SLUG}/plan.md" 60
-        append_excerpt "${SPINE_DIR}/features/${SLUG}/findings.md" 40
-        append_excerpt "${SPINE_DIR}/features/${SLUG}/log.md" 40
+        CONTEXT="Project Spine resume"$'\n\n'
+        PLAN_FILE="${SPINE_DIR}/features/${SLUG}/plan.md"
+        SPEC_FILE="${SPINE_DIR}/features/${SLUG}/spec.md"
+        PRIMARY_FILE=""
+        SOURCE=""
+
+        if [ -f "$PLAN_FILE" ]; then
+            PRIMARY_FILE="$PLAN_FILE"
+            SOURCE="plan"
+        elif [ -f "$SPEC_FILE" ]; then
+            PRIMARY_FILE="$SPEC_FILE"
+            SOURCE="spec"
+        fi
+
+        PLAN_SOURCE="$(section_field "$PLAN_FILE" "Resume" "Source")"
+        if [ "$PLAN_SOURCE" = "spec" ] && [ -f "$SPEC_FILE" ]; then
+            PRIMARY_FILE="$SPEC_FILE"
+            SOURCE="spec"
+        fi
+
+        CONTEXT="${CONTEXT}Active feature: ${SLUG}"$'\n'
+
+        if [ -n "$PRIMARY_FILE" ]; then
+            PHASE="$(section_field "$PRIMARY_FILE" "Resume" "Phase")"
+            GATE="$(section_field "$PRIMARY_FILE" "Resume" "Gate")"
+            CURRENT_SLICE="$(section_field "$PRIMARY_FILE" "Resume" "Current Slice")"
+            NEXT_STEP="$(section_field "$PRIMARY_FILE" "Resume" "Next Step")"
+            OPEN_QUESTIONS="$(section_field "$PRIMARY_FILE" "Resume" "Open Questions")"
+            FILES_IN_PLAY="$(section_field "$PRIMARY_FILE" "Resume" "Files in Play")"
+
+            if [ -z "$PHASE" ] && [ "$SOURCE" = "plan" ]; then
+                PHASE="$(legacy_plan_phase "$PLAN_FILE")"
+            fi
+            if [ -z "$PHASE" ] && [ "$SOURCE" = "spec" ]; then
+                PHASE="spec"
+            fi
+            if [ -z "$GATE" ]; then
+                if [ "$SOURCE" = "plan" ]; then
+                    GATE="$(section_field "$PLAN_FILE" "Review Gate" "Status")"
+                else
+                    GATE="pending"
+                fi
+            fi
+            if [ -z "$CURRENT_SLICE" ] && [ "$SOURCE" = "spec" ]; then
+                CURRENT_SLICE="review the active spec and decide if it is ready for planning"
+            fi
+            if [ -z "$NEXT_STEP" ] && [ "$SOURCE" = "spec" ]; then
+                NEXT_STEP="approve the spec or run \$spine-pwf ${SLUG} when ready to plan"
+            fi
+
+            line_if_present "Source" "$SOURCE"
+            line_if_present "Phase" "$PHASE"
+            line_if_present "Gate" "$GATE"
+            line_if_present "Primary file" "$PRIMARY_FILE"
+            line_if_present "Current slice" "$CURRENT_SLICE"
+            line_if_present "Next step" "$NEXT_STEP"
+            line_if_present "Open questions" "$OPEN_QUESTIONS"
+            line_if_present "Files in play" "$FILES_IN_PLAY"
+        fi
+
+        CONTEXT="${CONTEXT}"$'\n'
 
         BACKLOG_DIR="${SPINE_DIR}/features/backlog"
-        SPEC_FILE="${SPINE_DIR}/features/${SLUG}/spec.md"
         if [ -f "$SPEC_FILE" ] && [ -d "$BACKLOG_DIR" ]; then
             BACKLOG_WARNINGS=""
             in_front=false

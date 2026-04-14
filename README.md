@@ -58,11 +58,11 @@ Idea → $spine-spec → spec.md → plan.md → execute → review
 
 | File | Purpose | Size |
 |---|---|---|
-| `.spine/project.md` | Vision, stack, constraints | ≤40 lines |
-| `.spine/conventions.md` | Active conventions + decision log | grows slowly |
+| `.spine/project.md` | Vision, stack, constraints | on-demand reference |
+| `.spine/conventions.md` | Active conventions + decision log | on-demand reference |
 | `.spine/progress.md` | Feature dashboard | one line per feature |
 | `.spine/config.yaml` | Autonomy flag, model preferences | ~20 lines |
-| `.spine/features/{slug}/plan.md` | Per-feature plan with review/execution split | ~1-2 pages |
+| `.spine/features/{slug}/plan.md` | Per-feature plan + compact runtime resume state | ~1-2 pages |
 | `.spine/features/{slug}/findings.md` | Research and discoveries | updated per 2-Action Rule |
 | `.spine/features/{slug}/log.md` | Session log | timestamped entries |
 | `.spine/features/{slug}/spec.md` | Requirements (optional) | ≤60 lines |
@@ -82,7 +82,7 @@ autonomy: med  # low | med | high
 
 ### Hooks
 
-- **SessionStart**: Loads project, conventions, and active feature context on startup/resume
+- **SessionStart**: Emits compact active-feature resume state on startup/resume; deeper `.spine/` files stay on-demand
 - **PreToolUse / PostToolUse**: Emit structured Bash-scoped reminders for active-plan discipline
 - **Stop**: Returns a blocking hook decision while implementation checklists remain incomplete
 
