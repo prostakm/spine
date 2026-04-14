@@ -89,6 +89,7 @@ Turn an idea into a short, approved design that is clear enough to hand off to
   - verification / acceptance checks
 - Write the proposed design to `## Proposed Design` in spec.md with `Status: draft`
 - Get user approval before writing the spec
+- Explicit chat approval (`approved`, `spec approved`, `I approve`) counts here
 - After approval, update `## Proposed Design` status to `Status: approved`
 
 ### 5. Write the spec
@@ -114,6 +115,7 @@ Turn an idea into a short, approved design that is clear enough to hand off to
   - Design: approved
   - Spec: approved
   ```
+- Mirror any explicit chat approval into these status fields before handoff
 - After writing, quickly self-check for placeholders, contradictions, and
   ambiguity
 

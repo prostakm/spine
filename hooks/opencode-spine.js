@@ -1,8 +1,9 @@
 // Project Spine — OpenCode plugin
 // Enforces the plan review gate before edits and surfaces context on session start.
+// Explicit chat approval is mirrored into the active plan/spec file.
 // Installed to .opencode/plugins/spine.js in your project by install.sh.
 
-import { readFileSync, existsSync } from "fs"
+import { readFileSync, existsSync, writeFileSync } from "fs"
 import { join } from "path"
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
@@ -17,8 +18,17 @@ function planPath(root, slug) {
   return join(root, ".spine", "features", slug, "plan.md")
 }
 
+function specPath(root, slug) {
+  return join(root, ".spine", "features", slug, "spec.md")
+}
+
 function readPlan(p) {
   return existsSync(p) ? readFileSync(p, "utf8") : null
+}
+
+function normalizePath(filePath, root) {
+  if (!filePath) return null
+  return filePath.startsWith("/") ? filePath : join(root, filePath)
 }
 
 function fieldValue(content, heading, field) {
@@ -64,11 +74,147 @@ function planIsApproved(content) {
   return fieldValue(content, "Review Gate", "Status") === "approved"
 }
 
-function isSpinePath(filePath, root) {
-  if (!filePath) return false
-  const spinePath = join(root, ".spine")
-  const abs = filePath.startsWith("/") ? filePath : join(root, filePath)
-  return abs === spinePath || abs.startsWith(spinePath + "/")
+function setFieldValue(content, heading, field, value) {
+  const lines = content.split("\n")
+  const head = `## ${heading}`
+  const pat = new RegExp(`^\\s*-\\s*${field}:\\s*(.*)$`)
+  let inSection = false
+  let insertAt = lines.length
+  for (let i = 0; i < lines.length; i++) {
+    if (lines[i] === head) {
+      inSection = true
+      insertAt = i + 1
+      continue
+    }
+    if (inSection && /^## /.test(lines[i])) {
+      let at = i
+      while (at > 0 && lines[at - 1] === "") at--
+      lines.splice(at, 0, `- ${field}: ${value}`)
+      return lines.join("\n")
+    }
+    if (inSection && pat.test(lines[i])) {
+      lines[i] = `- ${field}: ${value}`
+      return lines.join("\n")
+    }
+    if (inSection) insertAt = i + 1
+  }
+  if (inSection) {
+    let at = insertAt
+    while (at > 0 && lines[at - 1] === "") at--
+    lines.splice(at, 0, `- ${field}: ${value}`)
+    return lines.join("\n")
+  }
+  return content
+}
+
+function setSectionStatus(content, heading, value) {
+  const lines = content.split("\n")
+  const head = `## ${heading}`
+  let inSection = false
+  for (let i = 0; i < lines.length; i++) {
+    if (lines[i] === head) {
+      inSection = true
+      continue
+    }
+    if (inSection && /^## /.test(lines[i])) {
+      lines.splice(i, 0, `Status: ${value}`)
+      return lines.join("\n")
+    }
+    if (inSection && /^Status:\s*/.test(lines[i])) {
+      lines[i] = `Status: ${value}`
+      return lines.join("\n")
+    }
+  }
+  return inSection ? [...lines, `Status: ${value}`].join("\n") : content
+}
+
+function markPlanApproved(content) {
+  let next = setFieldValue(content, "Review Gate", "Status", "approved")
+  if (!/^> \[R\]:\s*APPROVED(\s|$)/m.test(next) && next.includes("\n## Review Gate")) {
+    next = next.replace("\n## Review Gate", "\n> [R]: APPROVED\n\n## Review Gate")
+  }
+  return next
+}
+
+function markSpecApproved(content) {
+  let next = content
+  next = setFieldValue(next, "Status", "Brainstorm", "complete")
+  next = setFieldValue(next, "Status", "Design", "approved")
+  next = setFieldValue(next, "Status", "Spec", "approved")
+  return setSectionStatus(next, "Proposed Design", "approved")
+}
+
+function writeIfChanged(filePath, next) {
+  if (!next || !existsSync(filePath)) return
+  const prev = readFileSync(filePath, "utf8")
+  if (prev !== next) writeFileSync(filePath, next)
+}
+
+function collectNestedPaths(value, out = new Set()) {
+  if (!value || typeof value !== "object") return out
+  if (Array.isArray(value)) {
+    for (const item of value) collectNestedPaths(item, out)
+    return out
+  }
+  for (const [key, nested] of Object.entries(value)) {
+    if (["filePath", "file_path", "path"].includes(key) && typeof nested === "string") {
+      out.add(nested)
+      continue
+    }
+    collectNestedPaths(nested, out)
+  }
+  return out
+}
+
+function extractPatchTargets(patchText) {
+  if (!patchText) return []
+  const out = []
+  const patterns = [
+    /^\*\*\* (?:Add|Update|Delete) File: (.+)$/gm,
+    /^\*\*\* Move to: (.+)$/gm,
+  ]
+  for (const pattern of patterns) {
+    for (const match of patchText.matchAll(pattern)) {
+      out.push(match[1].trim())
+    }
+  }
+  return out
+}
+
+function collectToolTargets(tool, args) {
+  if (tool === "apply_patch") {
+    const patchTargets = extractPatchTargets(args?.patchText ?? args?.patch_text ?? "")
+    if (patchTargets.length > 0) return patchTargets
+  }
+  return [...collectNestedPaths(args)]
+}
+
+function allowedPendingPaths(root, slug) {
+  return new Set([planPath(root, slug), specPath(root, slug)])
+}
+
+function allTargetsAllowedWhilePending(tool, args, root, slug) {
+  const targets = collectToolTargets(tool, args)
+  if (targets.length === 0) return false
+  const allowed = allowedPendingPaths(root, slug)
+  return targets.every(target => allowed.has(normalizePath(target, root)))
+}
+
+function approvalTarget(text) {
+  const normalized = text.trim().toLowerCase()
+  if (!normalized) return null
+  if (/^(approved|i approve|approve)\.?$/.test(normalized)) return "generic"
+  if (/^(plan approved|i approve the plan|i approve plan)\.?$/.test(normalized)) return "plan"
+  if (/^(spec approved|i approve the spec|i approve spec)\.?$/.test(normalized)) return "spec"
+  return null
+}
+
+function extractMessageText(parts) {
+  return parts
+    .filter(part => part?.type === "text" && !part.synthetic && !part.ignored)
+    .map(part => part.text)
+    .join("\n")
+    .trim()
 }
 
 // Shell operators that signal a command is not read-only
@@ -93,16 +239,49 @@ function bashAllowed(cmd) {
 
 // ── Plugin ────────────────────────────────────────────────────────────────────
 
-export const SpinePlugin = async ({ directory }) => {
+export const SpinePlugin = async ({ directory, client }) => {
   const root = directory
 
   return {
+    event: async ({ event }) => {
+      if (event.type !== "message.updated") return
+
+      const info = event.properties?.info
+      if (!info || info.role !== "user") return
+
+      const slug = readSlug(root)
+      if (!slug) return
+
+      const message = await client.session.message({
+        path: { id: info.sessionID, messageID: info.id },
+        query: { directory: root },
+      }).catch(() => null)
+      const text = extractMessageText(message?.data?.parts ?? [])
+      const target = approvalTarget(text)
+      if (!target) return
+
+      const plan = planPath(root, slug)
+      const spec = specPath(root, slug)
+
+      if (target !== "spec") {
+        const content = readPlan(plan)
+        if (content && !planIsApproved(content)) {
+          writeIfChanged(plan, markPlanApproved(content))
+          return
+        }
+      }
+
+      if (target !== "plan") {
+        const content = readPlan(spec)
+        if (content) writeIfChanged(spec, markSpecApproved(content))
+      }
+    },
+
     // Enforce the review gate before any write or bash tool runs
     "tool.execute.before": async (input, output) => {
       const tool = input?.tool ?? ""
       // OpenCode may place args on input or output depending on version
       const args = output?.args ?? input?.args ?? {}
-      const filePath = args?.filePath ?? args?.path ?? args?.file_path ?? ""
       const cmd = args?.command ?? args?.cmd ?? ""
 
       const slug = readSlug(root)
@@ -114,11 +293,12 @@ export const SpinePlugin = async ({ directory }) => {
       if (planIsApproved(content)) return
 
       // Plan pending — block writes on non-.spine files
-      if (["write", "edit", "apply_patch", "multipatch"].includes(tool)) {
-        if (!isSpinePath(filePath, root)) {
+      if (["write", "edit", "apply_patch", "multiedit", "multipatch"].includes(tool)) {
+        if (!allTargetsAllowedWhilePending(tool, args, root, slug)) {
           throw new Error(
             `[spine] Plan review gate is pending for '${slug}'. ` +
-            `Record approval in ${plan} before editing non-.spine files.`
+            `Only explicit edits to ${plan} or ${specPath(root, slug)} are allowed until approval is recorded. ` +
+            `Record approval in ${plan} or say 'approved' in chat.`
           )
         }
       }

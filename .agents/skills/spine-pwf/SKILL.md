@@ -31,6 +31,8 @@ Planning is complete when `plan.md` passes `.spine/scripts/validate-plan.sh`.
   outside this skill
 - Do not work around those guards or treat them as optional
 - If a hook or gate blocks progress, fix the workflow state instead of bypassing it
+- While the plan gate is pending, only explicit edits to `plan.md` / `spec.md`
+  and read-only commands are allowed
 
 ## Plan Review (Gate 2)
 
@@ -41,7 +43,8 @@ After creating plan.md:
 > Properties are the proof: check they encode the right domain rules.
 > Mark properties you approve with `> [R]: ✓`.
 > Add `> [R]:` comments next to anything you want changed.
-> Mark `> [R]: APPROVED` when ready."
+> Mark `> [R]: APPROVED` when ready, or say `approved` / `plan approved` in chat.
+> Mirror explicit chat approval into `plan.md` before implementation."
 
 Then STOP.
 
@@ -58,7 +61,7 @@ User adds `> [R]:` comments in plan.md, co-located with context:
 3. Questions → answer as `> [A]: response`
 4. Mark done: `> [R]: ✓ original`
 5. Changes made → STOP for re-review
-6. `> [R]: APPROVED` → proceed
+6. `> [R]: APPROVED` or explicit chat approval mirrored into `plan.md` → proceed
 
 ## Implementation (after Gate 2)
 

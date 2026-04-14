@@ -222,7 +222,7 @@ If any assertion changes -> escalate.
 ## Errors
 - {error} - attempt: {attempt} - resolution: {resolution}
 
-<!-- REVIEW: PENDING - add > [R]: comments inline, mark > [R]: APPROVED when done -->
+<!-- REVIEW: PENDING - add > [R]: comments inline, mark > [R]: APPROVED when done, or explicitly approve in chat and mirror it here -->
 
 ## Review Gate
 - Status: pending
