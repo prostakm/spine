@@ -75,24 +75,29 @@ Read autonomy from `.spine/config.yaml`:
 Adapt to what user already provided — skip answered questions.
 Use explorer findings to make questions specific:
   BAD:  "What database will you use?"
-  GOOD: "The codebase uses SQLite via internal/db. Should this feature use the same connection or need its own storage?"
+  GOOD: "The codebase uses SQLite via internal/db.
+  Should this feature use the same connection or need its own storage?"
 
 ### Step 4: Create spec file
 - Slug (kebab-case) → `.spine/active-feature`
 - Write `.spine/features/{slug}/spec.md`
 - Keep `## Resume` current with a short phase, current slice, and next step
+- Keep `## Resume` near the bottom for fast tail-based recovery
 - Include YAML frontmatter with `dependencies: []` and `dependents: []`
 - Tag the role used: `**Role:** product-owner` or `**Role:** architect`
 - Include `## Change type` and `## Invariants` when known
 - Invariants section uses category labels (range, relational, stability, preservation, structural)
-- Every invariant should be expressible as "for all valid X, Y holds" — if it can't be, it's an acceptance criterion, not an invariant
-- Invariants section uses category labels (range, relational, stability, preservation, structural)
-- Every invariant should be expressible as "for all valid X, Y holds" — if it can't be, it's an acceptance criterion, not an invariant
+- Every invariant should be expressible as "for all valid X, Y holds"
+  - if it can't be, it's an acceptance criterion, not an invariant
+- Hard-wrap prose at 100 chars; rewrite to fit
+- Bold only the smallest crucial fragment
+- Run `.spine/scripts/validate-spec.sh .spine/features/{slug}/spec.md`
 - Every requirement must be testable
 - Under 60 lines — if longer, split the feature
 - **Splitting**: if the feature is too complex or covers multiple concerns:
   1. Keep the primary concern in the current feature
-  2. Create new feature dirs with spec.md containing YAML frontmatter `dependencies` referencing the current slug
+  2. Create new feature dirs with spec.md containing YAML frontmatter
+     `dependencies` referencing the current slug
   3. Move split-off features to backlog: `scripts/spine-backlog.sh move <slug>`
   4. The current feature's `dependents` list is auto-updated with backreferences
 - No implementation details

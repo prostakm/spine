@@ -35,15 +35,17 @@ The plan has two zones separated by a trust boundary:
 
 **Above the trust boundary (human reviews):**
 
+- **Context**: human context only. Summarize user goal, current baseline,
+  scope choice, and dependency notes. Keep agent handoff out of this section.
 - **Decisions**: only forks that need human judgment or lock in behavior.
-  Start with one-line `Goal` and `Approach`. Format decisions as
-  Chose / Over / Locks / Covered by. Prefix each decision heading
-  with a triage marker: 🔴 GATE (irreversible, deep-read),
-  🟡 REVIEW (reversible, non-trivial), 🟢 TRUST (covered by proof).
-  Max 7 decisions — split if more.
+  Start with flat bullets for `Goal`, `Approach`, and top `Risk`.
+  Format decisions as Chose / Over / Locks / Covered by.
+  Prefix each decision heading with a triage marker: 🔴 GATE
+  (irreversible, deep-read), 🟡 REVIEW (reversible, non-trivial),
+  🟢 TRUST (covered by proof). Max 7 decisions - split if more.
 - **Spec + proof**: strategy-adaptive section. Include ONLY the block
   matching the chosen strategy, delete the rest. Prefer compact bullets,
-  explicit conditionals, and fenced fixtures over scaffolding.
+  explicit conditionals, flow sketches, and fenced fixtures over prose.
 - **Properties**: present in every strategy block. The primary proof
   artifact. See Property extraction below.
 - **Contracts**: input/output types crossing boundaries. Skip for
@@ -63,6 +65,8 @@ The plan has two zones separated by a trust boundary:
 - The agent section must be executable from the plan alone. If an
   implementation detail would otherwise require reopening the codebase,
   spell it out here.
+- **Resume**: keep it near the bottom so fresh sessions can recover with a
+  quick tail read.
 
 ## Strategy-specific proof content
 
@@ -91,6 +95,8 @@ The plan has two zones separated by a trust boundary:
     condition → status + shape
     condition → status
   ```
+- Flow sketch: optional. Use for selector chains, request derivation,
+  or branching control flow when a bullet list is too lossy.
 - Smoke tests (wiring proofs)
 - Properties (structural invariants)
 
@@ -161,6 +167,8 @@ If the plan reveals the feature is too large or covers multiple concerns:
 - Bullet points over paragraphs
 - Short statements, not sentences
 - First line of each section = its conclusion (BLUF)
+- Hard-wrap prose at 100 chars. Rewrite to fit; do not overflow.
+- Bold only the smallest crucial fragment. Never bold whole bullets.
 - Delete unused strategy blocks from spec+proof — don't leave empty sections
 - Every property needs a category label and an AUTHOR marker
 - Above trust boundary: optimize for review speed and signal
@@ -175,7 +183,7 @@ If the plan reveals the feature is too large or covers multiple concerns:
 - Data shapes: colon-aligned `name: type  # constraint`
 - Alternatives: Chose/Over/Locks (not prose paragraphs)
 - Side effects: `⚠` marker prefix
-- Branching (2-3 paths): `condition? Y → x / N → y`
+- Branching (2-3 paths): aligned cases or a fenced flow sketch
 - File manifest: `CREATE/MODIFY/DELETE path` prefix
 - Metadata: key-value pairs, not tables
 

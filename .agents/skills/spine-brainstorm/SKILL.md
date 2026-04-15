@@ -40,15 +40,6 @@ Turn an idea into a short, approved design that is clear enough to hand off to
 ```markdown
 # Feature: {slug}
 
-## Resume
-- Source: spec
-- Phase: spec
-- Gate: pending
-- Current Slice: clarify intent and converge on one design
-- Next Step: ask the next highest-value question
-- Open Questions: first unanswered design question
-- Files in Play: `.spine/features/{slug}/spec.md`
-
 ## Status
 - Brainstorm: in_progress
 - Design: draft
@@ -60,6 +51,15 @@ Turn an idea into a short, approved design that is clear enough to hand off to
 ## Proposed Design
 
 ## Spec
+
+## Resume
+- Source: spec
+- Phase: spec
+- Gate: pending
+- Current Slice: clarify intent and converge on one design
+- Next Step: ask the next highest-value question
+- Open Questions: first unanswered design question
+- Files in Play: `.spine/features/{slug}/spec.md`
 ```
 
 ### 1. Ground in project context
@@ -125,9 +125,12 @@ Turn an idea into a short, approved design that is clear enough to hand off to
 - Include `## Boundaries` with both `NOT:` exclusions and `DO NOT:`
   anti-patterns. Anti-patterns from the pre-mortem and discussion
   belong here.
+- Hard-wrap prose at 100 chars; rewrite to fit
+- Bold only the smallest crucial fragment
 - **Splitting**: if the feature covers multiple independent concerns, propose splitting:
   1. Keep the primary concern in the current feature
-  2. Create new feature dirs with spec.md containing YAML frontmatter `dependencies` referencing the current slug
+  2. Create new feature dirs with spec.md containing YAML frontmatter
+     `dependencies` referencing the current slug
   3. Move split-off features to backlog: `scripts/spine-backlog.sh move <slug>`
   4. The current feature's `dependents` list is auto-updated with backreferences
 - Update `## Status` in spec.md:
@@ -138,7 +141,9 @@ Turn an idea into a short, approved design that is clear enough to hand off to
   - Spec: approved
   ```
 - Mirror any explicit chat approval into these status fields before handoff
-- Update `## Resume` to point at planning handoff (`Phase: planning`, `Next Step: run $spine-pwf {slug}`)
+- Update `## Resume` to point at planning handoff:
+  `Phase: planning`, `Next Step: run $spine-pwf {slug}`
+- Run `.spine/scripts/validate-spec.sh .spine/features/{slug}/spec.md`
 - After writing, quickly self-check for placeholders, contradictions, and
   ambiguity
 

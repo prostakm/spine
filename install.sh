@@ -568,8 +568,12 @@ sync_managed_file "$SCRIPT_DIR/templates/.spine/features/_template/spec.md"     
 
 # Planning utilities
 mkdir -p ".spine/scripts"
+sync_managed_file "$SCRIPT_DIR/scripts/validate-spine-doc.sh" ".spine/scripts/validate-spine-doc.sh"
+chmod +x ".spine/scripts/validate-spine-doc.sh" 2>/dev/null || true
 sync_managed_file "$SCRIPT_DIR/scripts/validate-plan.sh" ".spine/scripts/validate-plan.sh"
 chmod +x ".spine/scripts/validate-plan.sh" 2>/dev/null || true
+sync_managed_file "$SCRIPT_DIR/scripts/validate-spec.sh" ".spine/scripts/validate-spec.sh"
+chmod +x ".spine/scripts/validate-spec.sh" 2>/dev/null || true
 sync_managed_file "$SCRIPT_DIR/scripts/cleanup-features.sh" ".spine/scripts/cleanup-features.sh"
 chmod +x ".spine/scripts/cleanup-features.sh" 2>/dev/null || true
 

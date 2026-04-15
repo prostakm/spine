@@ -56,8 +56,8 @@ if ! grep -qE '^\*\*Strategy:\*\*' "$PLAN"; then
     errors=$((errors + 1))
 fi
 
-if ! grep -qE '^\*\*Goal:\*\*' "$PLAN"; then
-    echo "Missing **Goal:** line" >&2
+if ! grep -qE '^(\*\*Goal:\*\*|- Goal:)' "$PLAN"; then
+    echo "Missing Goal line" >&2
     errors=$((errors + 1))
 fi
 
@@ -65,7 +65,8 @@ strategy="$(sed -n 's/^\*\*Strategy:\*\*[[:space:]]*//p' "$PLAN" | awk 'NR==1 {p
 case "$strategy" in
     CORRECTNESS|EQUIVALENCE|STRUCTURAL|REGRESSION) ;;
     *)
-        echo "Invalid or missing strategy: '$strategy' (must be CORRECTNESS|EQUIVALENCE|STRUCTURAL|REGRESSION)" >&2
+        echo "Invalid or missing strategy: '$strategy'" >&2
+        echo "Must be CORRECTNESS | EQUIVALENCE | STRUCTURAL | REGRESSION" >&2
         errors=$((errors + 1))
         ;;
 esac
@@ -117,6 +118,10 @@ if ! grep -qE '^### Phase [0-9]' "$PLAN"; then
         echo "NOTE: Missing ### Agent self-review section" >&2
     fi
 
+fi
+
+if ! "$(dirname "$0")/validate-spine-doc.sh" "$PLAN" "plan"; then
+    errors=$((errors + 1))
 fi
 
 if [ "$errors" -gt 0 ]; then

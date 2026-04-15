@@ -22,7 +22,8 @@ SPEC (opt) ──► STOP ──► PLAN ──► STOP ──► IMPLEMENT ─�
 2. Determine slug (kebab-case), write to `.spine/active-feature`
 3. Create `.spine/features/{slug}/` from `_template/`
 4. Keep `## Resume` current in the active `spec.md` or `plan.md`.
-   It is the fresh-session handoff; keep it short and phase-accurate.
+   It is the fresh-session handoff; keep it short, phase-accurate,
+   and near the bottom for fast tail-based recovery.
 
 ## Planning phase
 Use **spine-plan** skill for plan creation.
@@ -42,7 +43,8 @@ After creating plan.md:
 
 > "Plan at `.spine/features/{slug}/plan.md`.
 > Budget: ~{N} min. Start with 🔴 decisions, then properties.
-> Review above the trust boundary — decisions, properties, contracts.
+> Review `Context`, `Decisions`, `Spec + proof`, and `Contracts`.
+> Stop at the trust boundary.
 > 🔴 GATE decisions need deep reading. 🟢 TRUST decisions are
 > covered by properties — skip unless the properties look wrong.
 > Mark properties you approve with `> [R]: ✓`.
@@ -73,7 +75,8 @@ User adds `> [R]:` comments in plan.md, co-located with context:
 - Main thread owns approvals, integration decisions, and final user communication
 - Keep trivial edits on the main thread
 - If blocked or stuck, escalate to the user rather than spawning additional agents
-- Do not change the workflow shape: spec/brainstorm (optional) -> plan -> approval -> implement -> review
+- Do not change the workflow shape:
+  `spec/brainstorm (optional) -> plan -> approval -> implement -> review`
 
 ### Test-first sequence
 For all strategies: implement property tests FIRST, then production code.
@@ -143,7 +146,7 @@ If user wants to start over or abandon current feature:
 
 ## Session Recovery
 1. `.spine/active-feature` → slug
-2. Read only the active file's `## Resume` block first
+2. Read only the active file's bottom `## Resume` block first
 3. Load the primary file from `- Source:` (`spec.md` while speccing,
    `plan.md` once planning/execution starts)
 4. Load `findings.md` / `log.md` only if the phase or blocker needs deeper history
