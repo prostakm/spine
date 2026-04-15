@@ -114,6 +114,40 @@ Money(cents: int, currency: str)
 
 ## Agent instructions
 
+### Applied constraints
+
+- `source: payroll/AGENTS.md` - use the shared `Money` type for public payroll values
+- `source: .spine/conventions.md` - keep decimal math centralized in one calculator path
+
+### Codebase packet
+
+This section makes the plan executable without broad re-reading.
+
+#### Current signatures
+
+```text
+payroll/calculator.py::calculate_net_pay(hours, rate, deductions) -> Money
+tests/test_payroll.py::test_calculate_net_pay_fixtures() -> None
+```
+
+#### Local snippets
+
+```text
+payroll/calculator.py::calculate_net_pay
+  gross = hours * rate
+  ...existing tax_total calculation...
+  return Money.from_decimal(component_total)
+```
+
+#### Test hooks and fixtures
+
+- `finance worksheet fixtures` in `tests/test_payroll.py` - existing fixture style for approved examples
+- `Decimal` strategies in `tests/test_payroll.py` - current property-test entry point
+
+#### Generated/runtime names
+
+- `Money.from_decimal` in `payroll/calculator.py` - existing conversion path to preserve
+
 ### File manifest
 
 - `MODIFY payroll/calculator.py`
@@ -144,6 +178,11 @@ Money(cents: int, currency: str)
 
 - parametrize finance worksheet cases from R1
 - use Decimal strategies with 2-4 fractional places
+
+### Validation commands
+
+- `pytest tests/test_payroll.py`
+- `ruff check payroll tests`
 
 ### Acceptance gate
 
@@ -278,6 +317,41 @@ events: AuditEvent[]  # sorted by timestamp desc
 
 ## Agent instructions
 
+### Applied constraints
+
+- `source: internal/api/AGENTS.md` - admin routes stay behind shared middleware, not handler-local checks
+- `source: .spine/conventions.md` - handlers stay thin and depend on interfaces at the boundary
+
+### Codebase packet
+
+This section makes the plan executable without broad re-reading.
+
+#### Current signatures
+
+```text
+internal/api/routes.go::registerRoutes(router) -> void
+internal/api/routes.go::requireAdmin(next) -> handler
+```
+
+#### Local snippets
+
+```text
+internal/api/routes.go::registerRoutes
+  ...public routes...
+  router.GET("/health", healthHandler)
+  ...admin group setup nearby...
+```
+
+#### Test hooks and fixtures
+
+- `newTestServer` in `internal/api/admin_audit_test.go` - existing route+middleware harness shape
+- `fakeAuditService` in `internal/api/admin_audit_test.go` - current dependency-double pattern
+
+#### Generated/runtime names
+
+- `requireAdmin` - exact middleware hook to reuse
+- `AdminAuditService` - interface name locked by this plan
+
 ### File manifest
 
 - `MODIFY internal/api/routes.go`
@@ -315,6 +389,11 @@ events: AuditEvent[]  # sorted by timestamp desc
 
 - assert the handler dependency stays at the service boundary
 - keep the response snapshot small and stable
+
+### Validation commands
+
+- `go test ./internal/api/...`
+- `go test ./...`
 
 ### Acceptance gate
 

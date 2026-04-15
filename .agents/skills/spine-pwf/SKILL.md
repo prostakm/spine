@@ -78,6 +78,18 @@ User adds `> [R]:` comments in plan.md, co-located with context:
 - Do not change the workflow shape:
   `spec/brainstorm (optional) -> plan -> approval -> implement -> review`
 
+### Plan-first execution
+- Approved `plan.md` is the implementation source of truth
+- Start implementation from the approved plan, not from broad project re-reading
+- If the plan already carries the needed constraints and current-state facts,
+  do NOT reopen `.spine/project.md`, `.spine/conventions.md`,
+  `.spine/progress.md`, `findings.md`, or `log.md`
+- First product-code reads after the plan should come from the current step's
+  file-manifest entries
+- If implementation needs a fact that is not in the plan
+  (signature, snippet, test hook, generated name, repo instruction), STOP and
+  patch the plan first rather than rebuilding context ad hoc
+
 ### Test-first sequence
 For all strategies: implement property tests FIRST, then production code.
 Properties in the plan are specifications. Implementation serves them.
@@ -116,9 +128,11 @@ Properties above the trust boundary are owned by the reviewer.
 1. Work through the implementation strategy sequentially
 2. If the approved plan is incomplete or contradicted by the codebase,
    STOP and revise before coding
-3. **2-Action Rule**: after every 2 view/search/read ops → update findings.md
-4. On each completed step: update acceptance checks, `## Resume`, and log.md
-5. **3-Strike errors**: diagnose → alternative → rethink → escalate to user
+3. Treat the approved `plan.md` as the startup brief and ongoing handoff;
+   keep `## Resume`, acceptance checks, and the implementation packet current
+4. **2-Action Rule**: after every 2 view/search/read ops → update findings.md
+5. On each completed step: update acceptance checks, `## Resume`, and log.md
+6. **3-Strike errors**: diagnose → alternative → rethink → escalate to user
 
 ### Decision questions during implementation
 - **low**: ask before unplanned files, alternatives, any deviation
@@ -149,7 +163,13 @@ If user wants to start over or abandon current feature:
 2. Read only the active file's bottom `## Resume` block first
 3. Load the primary file from `- Source:` (`spec.md` while speccing,
    `plan.md` once planning/execution starts)
-4. Load `findings.md` / `log.md` only if the phase or blocker needs deeper history
-5. `git diff --stat` → changes when code may already exist
-6. Check for unaddressed `> [R]:` only when the plan gate is pending
-7. Resume — do NOT recreate plan/spec
+4. During implementation, treat the approved `plan.md` as the only startup
+   brief unless it is missing required detail
+5. Do NOT load `.spine/project.md`, `.spine/conventions.md`,
+   `.spine/progress.md`, `findings.md`, or `log.md` unless the plan is missing
+   a needed fact, the code contradicts the plan, or a blocker needs deeper history
+6. `git diff --stat` → changes when code may already exist
+7. First product-code reads should come from the current implementation step's
+   file-manifest entries
+8. Check for unaddressed `> [R]:` only when the plan gate is pending
+9. Resume — do NOT recreate plan/spec

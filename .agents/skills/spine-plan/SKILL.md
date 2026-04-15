@@ -53,6 +53,13 @@ The plan has two zones separated by a trust boundary:
 
 **Below the trust boundary (agent executes, proofs verify):**
 
+- **Applied constraints**: copy the specific rules from AGENTS,
+  conventions, project docs, or external contracts that actually matter for
+  this feature. Quote the source path and restate the rule locally so
+  implementation does not need to reopen the source.
+- **Codebase packet**: exact current signatures, focused snippets,
+  test hooks/fixtures, generated names, and other current-state facts needed
+  to edit safely. This is the anti-research packet for implementation.
 - **File manifest**: exact paths with create/modify/delete, touched
   symbols, and what changes in each file
 - **Implementation strategy**: steps referencing decisions by number.
@@ -60,6 +67,7 @@ The plan has two zones separated by a trust boundary:
   step, include a code snippet or pseudocode sketch.
 - **Test implementation notes**: exact test targets, framework,
   parametrize hints, generation strategies, snapshot names
+- **Validation commands**: exact commands to run for the acceptance gate
 - **Acceptance gate**: strategy-specific checklist, must include
   property verification and concrete validation commands when known
 - The agent section must be executable from the plan alone. If an
@@ -67,6 +75,24 @@ The plan has two zones separated by a trust boundary:
   spell it out here.
 - **Resume**: keep it near the bottom so fresh sessions can recover with a
   quick tail read.
+
+## Plan self-sufficiency
+
+- The approved `plan.md` should be sufficient to start implementation with
+  only `## Resume`, `plan.md`, `git diff --stat`, and then the current step's
+  manifest files
+- Do not rely on implementation-time rereads of `.spine/project.md`,
+  `.spine/conventions.md`, `.spine/progress.md`, `findings.md`, `log.md`, or
+  AGENTS files if the relevant rule can be copied into the plan once
+- If a file outside the manifest must be reopened only to learn a fact needed
+  for safe edits, the plan is missing context; patch the plan instead of
+  normalizing ad hoc exploration
+- Prefer exact facts over summaries:
+  - current function/component signatures
+  - existing helper names and test fixtures
+  - short local snippets around touched logic
+  - exact generated schema/type/export names
+  - exact commands for verify/build/test
 
 ## Strategy-specific proof content
 
@@ -173,6 +199,8 @@ If the plan reveals the feature is too large or covers multiple concerns:
 - Every property needs a category label and an AUTHOR marker
 - Above trust boundary: optimize for review speed and signal
 - Below trust boundary: optimize for implementation accuracy
+- Below trust boundary: copy facts, not references, when those facts are
+  required for safe edits
 - File paths, symbols, commands in backticks
 
 ### Notation choices

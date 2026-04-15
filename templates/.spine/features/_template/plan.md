@@ -8,6 +8,9 @@
 - Conventions: `.spine/conventions.md`
 - Progress: `.spine/progress.md`
 - Spec: `.spine/features/{slug}/spec.md` (if present)
+- Implementation startup rule: after approval, start from this `plan.md`;
+  do not reload the sources above unless the plan is missing a needed fact or
+  the code contradicts it
 - User context: {goal, user, or trigger in one line}
 - Existing behavior: {current boundary or baseline}
 - Scope choice: {chosen scope or none}
@@ -195,6 +198,41 @@ then:
 
 ## Agent instructions
 
+### Applied constraints
+
+- `source: {path}` - {rule copied here in implementation-ready form}
+- `source: {path}` - {rule copied here in implementation-ready form}
+
+### Codebase packet
+
+This section makes the plan executable without broad re-reading.
+
+#### Current signatures
+
+```text
+{path}::{symbol}({args}) -> {return}
+{path}::{symbol}({args}) -> {return}
+```
+
+#### Local snippets
+
+```text
+{path}::{symbol}
+  ...{existing nearby logic}...
+  {decision-carrying line}
+  ...
+```
+
+#### Test hooks and fixtures
+
+- `{helper}` in `{path}` - {what existing fixture/helper already does}
+- `{helper}` in `{path}` - {what existing fixture/helper already does}
+
+#### Generated/runtime names
+
+- `{exact schema/type/export name}` in `{path}` - {why it matters}
+- `{exact route/query key/test name}` - {why it matters}
+
 ### File manifest
 
 - `CREATE path/to/file`
@@ -227,6 +265,11 @@ then:
 - {parametrize, property framework hints, snapshot format}
 - {framework: hypothesis | fast-check | jqwik | rapid | FsCheck | QuickCheck}
 - {exact test names or suites to add/update}
+
+### Validation commands
+
+- `{command}`
+- `{command}`
 
 ### Acceptance gate
 
