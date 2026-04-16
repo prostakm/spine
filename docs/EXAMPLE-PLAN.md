@@ -6,28 +6,33 @@
 # Feature: payroll-rounding
 
 ## Context
-- Project: `.spine/project.md`
-- Conventions: `.spine/conventions.md`
-- Progress: `.spine/progress.md`
-- Spec: `.spine/features/payroll-rounding/spec.md`
+- Spec: `.spine/features/payroll-rounding/spec.md` (approved)
 - User context: finance export rounds net pay incorrectly
 - Existing behavior: components round independently before final net pay
-- Scope choice: fix net-pay math only
-- Dependency notes: payroll CSV snapshot must stay stable
+- Scope: fix net-pay math only
+
+### Planning additions
+- Dependency: payroll CSV snapshot must stay stable
+- Calculator currently returns `Money.from_decimal(component_total)`
+  — component-level rounding, not final-step
 
 **Status:** REVIEW
 **Scope:** Correct net-pay rounding for hourly payroll exports
 **Risk:** MEDIUM - touches money math
+<!-- Derived from spec Change type -->
 **Strategy:** CORRECTNESS
 **Budget:** ~8 min
+
+---
 
 ## Decisions
 
 - Goal: **net pay** matches finance rules for every supported timesheet
+  — distilled from spec Problem
 - Approach: centralize rounding in one calculator, then prove it with fixtures and properties
 - Risk: rule mismatch -> lock fixture cases from finance worksheet examples
 
-### 🔴 D1: Final-only rounding
+### 🔴 D1: Final-only rounding ⚠️
 
 - Chose: banker rounding at the final net-pay step
 - Over: per-component half-up rounding - disagrees with finance worksheet
@@ -41,7 +46,7 @@
 
 ### Rules
 
-**R1: Final-only rounding** - round once after tax and benefit totals
+**R1: Final-only rounding** - round once after tax and benefit totals [REQ-1]
 
 ```text
 40h × $25.125, no deductions                -> $1,005.00
@@ -62,7 +67,7 @@ then:
 
 ### Properties
 <!-- AUTHOR: human -->
-- **P1:** range: net pay is never negative
+- **P1:** range: net pay is never negative ⚠️
 - **P2:** relational: increasing hours never decreases net pay
 - **P3:** stability: equivalent decimal inputs normalize to the same cents
 
@@ -73,7 +78,7 @@ then:
 ### Edge cases
 
 - zero-hour timesheet
-- deductions larger than gross
+- deductions larger than gross ⚠️
 
 ### Code sketch (optional)
 
@@ -82,6 +87,17 @@ calculate_net_pay(hours, rate, deductions) -> Money:
   gross = hours * rate
   net = max(gross - tax_total - sum(deductions), Decimal("0"))
   return Money.from_decimal(net.quantize(CENTS, rounding=ROUND_HALF_EVEN))
+```
+
+### Arch boundaries schematic (optional)
+
+```text
+TimesheetService ─── (unchanged)
+  │
+  ▼
+PayrollCalculator ──── rounding strategy?
+  ├── per-component (old) ← REMOVING
+  └── final-only (D1) ──→ Money ← UNCHANGED (P3)
 ```
 
 ## Contracts
@@ -114,11 +130,6 @@ Money(cents: int, currency: str)
 
 ## Agent instructions
 
-### Applied constraints
-
-- `source: payroll/AGENTS.md` - use the shared `Money` type for public payroll values
-- `source: .spine/conventions.md` - keep decimal math centralized in one calculator path
-
 ### Codebase packet
 
 This section makes the plan executable without broad re-reading.
@@ -141,21 +152,24 @@ payroll/calculator.py::calculate_net_pay
 
 #### Test hooks and fixtures
 
-- `finance worksheet fixtures` in `tests/test_payroll.py` - existing fixture style for approved examples
+- `finance worksheet fixtures` in `tests/test_payroll.py`
+  existing fixture style for approved examples
 - `Decimal` strategies in `tests/test_payroll.py` - current property-test entry point
 
 #### Generated/runtime names
 
 - `Money.from_decimal` in `payroll/calculator.py` - existing conversion path to preserve
 
-### File manifest
+### File tree
 
-- `MODIFY payroll/calculator.py`
-  - symbols: `calculate_net_pay`, `Money.from_decimal`
-  - change: move rounding to the final return path only
-- `MODIFY tests/test_payroll.py`
-  - symbols: `test_calculate_net_pay_fixtures`, `test_net_pay_properties`
-  - change: add worksheet fixtures and property coverage
+```text
+▾ payroll/
+  ● calculator.py                                     [M] move rounding to final return path
+  (...)
+▾ tests/
+  ● test_payroll.py                                   [M] +worksheet fixtures, +property coverage
+  (...)
+```
 
 ### Implementation strategy
 
@@ -166,6 +180,10 @@ payroll/calculator.py::calculate_net_pay
    assert calculate_net_pay(...).cents == expected
    ```
 
+   Framework: pytest + Hypothesis. Parametrize finance worksheet
+   cases from R1. Use Decimal strategies with 2-4 fractional
+   places for property tests.
+
 2. `payroll/calculator.py` - Move rounding to the final return path
 
    ```text
@@ -174,21 +192,12 @@ payroll/calculator.py::calculate_net_pay
    return Money.from_decimal(net.quantize(CENTS, rounding=ROUND_HALF_EVEN))
    ```
 
-### Test implementation notes
-
-- parametrize finance worksheet cases from R1
-- use Decimal strategies with 2-4 fractional places
-
-### Validation commands
-
-- `pytest tests/test_payroll.py`
-- `ruff check payroll tests`
-
 ### Acceptance gate
 
-- [ ] Property tests implemented
-- [ ] All 3 properties pass for 500 generated cases
-- [ ] Finance fixture tests pass unchanged
+- [ ] `pytest tests/test_payroll.py` passes
+- [ ] Properties P1-P3 hold (500 generated cases each)
+- [ ] Spec acceptance criteria verified by tests above
+- [ ] Finance worksheet fixture tests pass unchanged
 
 ### Agent self-review (fill after implementation)
 
@@ -222,28 +231,32 @@ payroll/calculator.py::calculate_net_pay
 # Feature: admin-audit-endpoint
 
 ## Context
-- Project: `.spine/project.md`
-- Conventions: `.spine/conventions.md`
-- Progress: `.spine/progress.md`
-- Spec: `.spine/features/admin-audit-endpoint/spec.md`
+- Spec: `.spine/features/admin-audit-endpoint/spec.md` (approved)
 - User context: admins need a safe way to inspect recent audit events
 - Existing behavior: audit data exists, but no HTTP read boundary exposes it
-- Scope choice: add one admin-only read endpoint
-- Dependency notes: existing audit service interface stays the data source
+- Scope: add one admin-only read endpoint
+
+### Planning additions
+- Existing `requireAdmin` middleware already wired for other admin routes
+- `AdminAuditService` interface name chosen to match existing naming pattern
 
 **Status:** REVIEW
 **Scope:** Add **admin-only** audit-log read endpoint
 **Risk:** LOW - additive API surface
+<!-- Derived from spec Change type -->
 **Strategy:** STRUCTURAL
 **Budget:** ~5 min
+
+---
 
 ## Decisions
 
 - Goal: admins can query recent audit events without direct DB access
+  — distilled from spec Problem
 - Approach: thin HTTP endpoint over the existing audit service
 - Risk: permission leak -> enforce the admin check at the route boundary
 
-### 🔴 D1: Authorization boundary
+### 🔴 D1: Authorization boundary 🛡️
 
 - Chose: route-level admin middleware
 - Over: handler-local role check - easier to miss on reuse
@@ -269,13 +282,12 @@ GET /admin/audit?limit=int:
   non-admin -> 403
 ```
 
-### Flow sketch (optional)
+### Flow diagram (optional)
 
 ```text
 request -> admin middleware
-is admin:
-  yes -> handler -> audit service -> response
-  no  -> 401 or 403
+  ├── is admin -> handler -> audit service -> response
+  └── not admin -> 401 or 403
 ```
 
 ### Smoke tests
@@ -285,7 +297,7 @@ is admin:
 
 ### Properties
 <!-- AUTHOR: human -->
-- **P1:** structural: no handler is callable without admin middleware
+- **P1:** structural: no handler is callable without admin middleware 🛡️
 - **P2:** range: response always contains `events` with a list value
 - **P3:** structural: handler depends on audit service, not repository
 
@@ -317,11 +329,6 @@ events: AuditEvent[]  # sorted by timestamp desc
 
 ## Agent instructions
 
-### Applied constraints
-
-- `source: internal/api/AGENTS.md` - admin routes stay behind shared middleware, not handler-local checks
-- `source: .spine/conventions.md` - handlers stay thin and depend on interfaces at the boundary
-
 ### Codebase packet
 
 This section makes the plan executable without broad re-reading.
@@ -352,14 +359,17 @@ internal/api/routes.go::registerRoutes
 - `requireAdmin` - exact middleware hook to reuse
 - `AdminAuditService` - interface name locked by this plan
 
-### File manifest
+### File tree
 
-- `MODIFY internal/api/routes.go`
-  - symbols: `registerRoutes`, `requireAdmin`
-  - change: register `/admin/audit` behind admin middleware
-- `CREATE internal/api/admin_audit.go`
-  - symbols: `AdminAuditHandler`, `AdminAuditService`
-  - change: make the handler depend on the audit service interface only
+```text
+▾ internal/api/
+  ● routes.go                                         [M] register /admin/audit behind admin middleware
+  ● admin_audit.go                                    [C] AdminAuditHandler, AdminAuditService interface
+  (...)
+▾ internal/api/ (tests)
+  ● admin_audit_test.go                               [M] +structural auth tests, +response shape tests
+  (...)
+```
 
 ### Implementation strategy
 
@@ -370,6 +380,9 @@ internal/api/routes.go::registerRoutes
    non-admin -> assert 403
    admin -> assert request reaches handler
    ```
+
+   Assert handler dependency stays at the service boundary.
+   Keep response snapshot small and stable.
 
 2. `internal/api/admin_audit.go` - Handler against interface
 
@@ -385,20 +398,11 @@ internal/api/routes.go::registerRoutes
    admin.GET("/audit", requireAdmin(AdminAuditHandler(svc)))
    ```
 
-### Test implementation notes
-
-- assert the handler dependency stays at the service boundary
-- keep the response snapshot small and stable
-
-### Validation commands
-
-- `go test ./internal/api/...`
-- `go test ./...`
-
 ### Acceptance gate
 
-- [ ] Structural property tests pass
-- [ ] Unauthorized requests return 401 and 403 as specified
+- [ ] `go test ./internal/api/...` passes
+- [ ] Properties P1-P3 hold
+- [ ] Spec acceptance criteria verified by tests above
 - [ ] Route wiring smoke tests pass
 
 ### Agent self-review (fill after implementation)

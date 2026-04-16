@@ -76,11 +76,6 @@ if ! grep -qE '^### Acceptance gate' "$PLAN"; then
     errors=$((errors + 1))
 fi
 
-if ! grep -qE '^### Applied constraints' "$PLAN"; then
-    echo "Missing ### Applied constraints in Agent instructions" >&2
-    errors=$((errors + 1))
-fi
-
 if ! grep -qE '^### Codebase packet' "$PLAN"; then
     echo "Missing ### Codebase packet in Agent instructions" >&2
     errors=$((errors + 1))
@@ -93,11 +88,6 @@ fi
 
 if ! grep -qE '^#### Test hooks and fixtures' "$PLAN"; then
     echo "Missing #### Test hooks and fixtures in Codebase packet" >&2
-    errors=$((errors + 1))
-fi
-
-if ! grep -qE '^### Validation commands' "$PLAN"; then
-    echo "Missing ### Validation commands in Agent instructions" >&2
     errors=$((errors + 1))
 fi
 
@@ -143,8 +133,9 @@ if ! grep -qE '^### Phase [0-9]' "$PLAN"; then
         echo "NOTE: Missing ### Agent self-review section" >&2
     fi
 
-    if ! grep -qE '^- `source: ' "$PLAN"; then
-        echo "NOTE: Applied constraints should copy at least one source-tagged rule" >&2
+    # Neotree-style file tree (warning, not error)
+    if ! grep -qE '^[▾●]' "$PLAN" && ! grep -qE '^### File tree' "$PLAN"; then
+        echo "NOTE: No neotree-style file tree found. Consider using ### File tree with ▾/● markers." >&2
     fi
 
 fi

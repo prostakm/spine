@@ -43,10 +43,15 @@ After creating plan.md:
 
 > "Plan at `.spine/features/{slug}/plan.md`.
 > Budget: ~{N} min. Start with 🔴 decisions, then properties.
-> Review `Context`, `Decisions`, `Spec + proof`, and `Contracts`.
+> Review `Context` (skim spec-derived fields, deep-read Planning
+> additions), `Decisions`, `Spec + proof`, and `Contracts`.
 > Stop at the trust boundary.
 > 🔴 GATE decisions need deep reading. 🟢 TRUST decisions are
 > covered by properties — skip unless the properties look wrong.
+> Criticality tags (⚠️ 🔒 🛡️ 👁️) mark volatile, locking, security,
+> or UX-critical items — verify these first.
+> Rules tagged [REQ-N] prove spec requirements — verify the fixture,
+> don't re-approve the requirement.
 > Mark properties you approve with `> [R]: ✓`.
 > Add `> [R]:` comments next to anything you want changed.
 > Mark `> [R]: APPROVED` when ready, or say `approved` / `plan approved` in chat.
@@ -85,7 +90,7 @@ User adds `> [R]:` comments in plan.md, co-located with context:
   do NOT reopen `.spine/project.md`, `.spine/conventions.md`,
   `.spine/progress.md`, `findings.md`, or `log.md`
 - First product-code reads after the plan should come from the current step's
-  file-manifest entries
+  file tree entries
 - If implementation needs a fact that is not in the plan
   (signature, snippet, test hook, generated name, repo instruction), STOP and
   patch the plan first rather than rebuilding context ad hoc
@@ -170,6 +175,6 @@ If user wants to start over or abandon current feature:
    a needed fact, the code contradicts the plan, or a blocker needs deeper history
 6. `git diff --stat` → changes when code may already exist
 7. First product-code reads should come from the current implementation step's
-   file-manifest entries
+  file tree entries
 8. Check for unaddressed `> [R]:` only when the plan gate is pending
 9. Resume — do NOT recreate plan/spec

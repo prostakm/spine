@@ -1,24 +1,42 @@
 # Feature: {FEATURE_NAME}
 
 <!-- Human context only. Keep prose hard-wrapped at 100 chars.
-     Bold only the smallest crucial fragment. -->
+     Bold only the smallest crucial fragment.
+     Keep implementation details (component names, pixel specs, library
+     choices) out of Context — those go in the agent zone Implementation
+     strategy. Context answers: what's broken, what's the scope, what
+     depends on it.
+     Spec-derived fields carry forward approved spec facts for plan
+     self-sufficiency. Reviewer skims for accuracy, does not re-approve.
+     Only "Planning additions" needs deep reading.
+     Criticality tags (use sparingly — only when the tag adds real signal):
+       ⚠️  volatile: data loss, money errors, corruption, silent wrong results
+       🔒  locks in: constrains future architecture or behavior
+       🛡️  security: auth, permissions, PII, attack surface
+       👁️  UX-critical: directly affects what users see or experience
+     Append to decision headings, properties, rules, or edge cases.
+     Most items get no tag. -->
 
 ## Context
-- Project: `.spine/project.md`
-- Conventions: `.spine/conventions.md`
-- Progress: `.spine/progress.md`
-- Spec: `.spine/features/{slug}/spec.md` (if present)
+- Spec: `.spine/features/{slug}/spec.md` (approved)
 - Implementation startup rule: after approval, start from this `plan.md`;
   do not reload the sources above unless the plan is missing a needed fact or
   the code contradicts it
-- User context: {goal, user, or trigger in one line}
-- Existing behavior: {current boundary or baseline}
-- Scope choice: {chosen scope or none}
-- Dependency notes: {upstream contract, file, or none}
+- User context: {from spec — goal, user, or trigger}
+- Existing behavior: {from spec, enriched with technical detail}
+- Scope: {from spec}
+
+### Planning additions
+<!-- Technical context discovered during planning that the spec didn't
+     cover: actual files, APIs, error codes, data shapes, dependency
+     constraints. Omit section if spec was complete. -->
+
+- {new technical context, or omit entire subsection}
 
 **Status:** DRAFT | REVIEW | ANNOTATED | APPROVED
-**Scope:** {one sentence - what changes, for whom}
+**Scope:** {from spec — what changes, for whom}
 **Risk:** LOW | MEDIUM | HIGH - {one phrase justifying}
+<!-- Derived from spec Change type -->
 **Strategy:** CORRECTNESS | EQUIVALENCE | STRUCTURAL | REGRESSION
 **Budget:** ~{N} min review above trust boundary
 
@@ -26,7 +44,7 @@
 
 ## Decisions
 
-- Goal: {what this delivers - one sentence}
+- Goal: {what this delivers — distilled from spec Problem}
 - Approach: {technical strategy - 1-2 short lines}
 - Risk: {risk} -> {mitigation}
 
@@ -34,7 +52,7 @@
      can a type, lint rule, or shared helper make this unreviewable later?
      If yes, note it in Poka-yoke later and add it to conventions backlog. -->
 
-### 🔴 D1: {decision title}
+### 🔴 D1: {decision title} {⚠️|🔒|🛡️|👁️}
 
 - Chose: {what}
 - Over: {alt} - {why not}
@@ -44,7 +62,13 @@
 
 > ANNOTATION:
 
-<!-- Repeat D2, D3... Max 7. If more, split the feature. -->
+<!-- Repeat D2, D3... Max 7. If more, split the feature.
+     For 🟡 REVIEW: same format as 🔴 GATE.
+     For 🟢 TRUST: one line with property reference.
+       - 🟢 T3: {title} — {one-line summary} ({P-refs})
+       No Chose/Over/Locks expansion — agent owns these.
+     Criticality tags are optional. Append ⚠️ 🔒 🛡️ 👁️ to the heading
+     when the reason matters. Most decisions get no tag. -->
 
 ---
 
@@ -56,7 +80,10 @@
 
 ### Rules
 
-**R1: {rule}** - {plain English}
+<!-- Tag with [REQ-N] when the rule proves a spec requirement.
+     Untagged rules are plan-discovered — reviewer pays extra attention. -->
+
+**R1: {rule}** - {plain English} [REQ-{n}]
 
 ```text
 {input conditions} -> {expected}
@@ -72,8 +99,9 @@ then:
 ```
 
 ### Properties
-<!-- AUTHOR: human | human-validated | agent-proposed -->
-- **P1:** {category}: {invariant}
+<!-- AUTHOR: human | human-validated | agent-proposed
+     Append ⚠️ 🔒 🛡️ 👁️ after invariant when the reason matters. -->
+- **P1:** {category}: {invariant} {⚠️|🔒|🛡️|👁️}
 - **P2:** {category}: {invariant}
 
 ### Snapshot anchors
@@ -82,7 +110,7 @@ then:
 
 ### Edge cases
 
-- {specific scenario}
+- {specific scenario} {⚠️ if catastrophic}
 
 ### Code sketch (optional)
 
@@ -91,6 +119,37 @@ then:
   ...{obvious setup}...
   {THE DECISION LINE}  # why this matters
   ...{obvious wiring}...
+```
+
+### Arch boundaries schematic (optional)
+
+Use when the change touches multiple layers. Shows locked vs changed
+boundaries — lets the reviewer verify no arch violations at a glance:
+
+```text
+Layer A ─── (unchanged, D1 locks)
+  │
+  ▼
+Layer B ──── condition?
+  ├── path1 ──→ Layer C ← NEW
+  └── path2 ──→ Layer D ← UNCHANGED (P2)
+```
+
+### Control flow tree (optional)
+
+Use for branching logic with >2 paths. Shows decision outcomes,
+not variable names or code:
+
+```text
+query loads
+  ├── pending ──→ LoadingState
+  ├── error    ──→ StateCard
+  └── ok:
+       ├── condition=false ──→ path A
+       └── condition=true:
+            ├── sub-pending ──→ LoadingState
+            ├── sub-error   ──→ StateCard
+            └── sub-ok      ──→ path B (unchanged)
 ```
 
 <!-- EQUIVALENCE -->
@@ -128,14 +187,20 @@ then:
   {condition} -> {status}
 ```
 
-### Flow sketch (optional)
+### Flow diagram (optional)
+
+Use for request chains, selector pipelines, or branching control flow:
 
 ```text
-{source} -> {selector or guard}
+{source} -> {guard or transform}
 {condition}:
-  yes -> {path A}
-  no  -> {path B}
+  ├── yes -> {path A}
+  └── no  -> {path B}
 ```
+
+See CORRECTNESS block for arch boundaries schematic and control flow
+tree notation — same diagrams apply when structural changes touch
+multiple layers or have branching paths.
 
 ### Smoke tests
 
@@ -168,7 +233,10 @@ then:
 
 ## Contracts
 
-<!-- Skip for EQUIVALENCE and REGRESSION unless interfaces change. -->
+<!-- Skip when spec I/O already has complete types and no enrichment
+     is needed. Include when planning discovers actual signatures,
+     query shapes, or types the spec left abstract.
+     Always include Data flow and Side effects when they exist. -->
 
 ### Data flow
 
@@ -197,11 +265,6 @@ then:
 <!-- TRUST BOUNDARY - reviewer stops here -->
 
 ## Agent instructions
-
-### Applied constraints
-
-- `source: {path}` - {rule copied here in implementation-ready form}
-- `source: {path}` - {rule copied here in implementation-ready form}
 
 ### Codebase packet
 
@@ -233,20 +296,31 @@ This section makes the plan executable without broad re-reading.
 - `{exact schema/type/export name}` in `{path}` - {why it matters}
 - `{exact route/query key/test name}` - {why it matters}
 
-### File manifest
+### File tree
 
-- `CREATE path/to/file`
-  - symbols: `{new symbol}`, `{new symbol}`
-  - change: {what this file will contain}
-- `MODIFY path/to/file`
-  - symbols: `{existing symbol}`, `{new helper}`
-  - change: {what changes in this file}
-- `DELETE path/to/file` (if applicable)
-  - reason: {why removed}
+Show touched files in a neotree-style tree. Use `▾` for expanded
+directories, `●` for files. Mark `[M]` modify, `[C]` create,
+`[D]` delete. Collapse non-scoped siblings with `(...)`. Keep
+change descriptions to one line.
+
+```text
+▾ src/
+  ▾ feature/
+    ● module.ts                          [M] +newFunction, restructured logic
+    ● helper.ts                          [C] new helper
+  (...)
+▾ test/
+  ● feature.test.ts                      [M] +new test cases
+  (...)
+```
 
 ### Implementation strategy
 
-<!-- Steps reference decisions by number. Phase if natural stages exist, flat if not. -->
+<!-- Steps reference decisions by number. Phase if natural stages
+     exist, flat if not. Each phase names its target file(s).
+     For tests: include framework, arbitraries, mock setup, and
+     assertions inline — no separate Test implementation notes.
+     Show only the correct approach, no "NOT THIS / THIS" narratives. -->
 
 1. `{path or symbol}` - {step referencing D1}
 
@@ -260,23 +334,13 @@ This section makes the plan executable without broad re-reading.
    {logic sketch or pseudocode for the non-trivial part}
    ```
 
-### Test implementation notes
-
-- {parametrize, property framework hints, snapshot format}
-- {framework: hypothesis | fast-check | jqwik | rapid | FsCheck | QuickCheck}
-- {exact test names or suites to add/update}
-
-### Validation commands
-
-- `{command}`
-- `{command}`
-
 ### Acceptance gate
 
-- [ ] All properties from Spec + proof implemented as tests
-- [ ] Property tests pass (minimum 100 generated cases per property)
-- [ ] No property statements modified without reviewer approval
-- [ ] {strategy-specific checks}
+- [ ] `{test command}` passes
+- [ ] Properties {P-refs} hold (verified by tests, min 100 generated cases)
+- [ ] Spec acceptance criteria verified by tests above
+- [ ] {plan-specific checks — 2-4 items: arch boundaries, preservation,
+      performance budgets}
 
 ### Agent self-review (fill after implementation)
 
