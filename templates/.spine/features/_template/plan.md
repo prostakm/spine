@@ -2,13 +2,14 @@
 
 <!-- Human context only. Keep prose hard-wrapped at 100 chars.
      Bold only the smallest crucial fragment.
+     Above the trust boundary, optimize for reviewer speed:
+     changed code surface first, then compact context, then the chosen
+     approach and proof.
      Keep implementation details (component names, pixel specs, library
      choices) out of Context — those go in the agent zone Implementation
-     strategy. Context answers: what's broken, what's the scope, what
-     depends on it.
+     strategy.
      Spec-derived fields carry forward approved spec facts for plan
      self-sufficiency. Reviewer skims for accuracy, does not re-approve.
-     Only "Planning additions" needs deep reading.
      Criticality tags (use sparingly — only when the tag adds real signal):
        ⚠️  volatile: data loss, money errors, corruption, silent wrong results
        🔒  locks in: constrains future architecture or behavior
@@ -17,28 +18,26 @@
      Append to decision headings, properties, rules, or edge cases.
      Most items get no tag. -->
 
+## Changed code surface
+
+```text
+{path}                                                   [M] {why this matters to review}
+{path}                                                   [M] {why this matters to review}
+```
+
 ## Context
 - Spec: `.spine/features/{slug}/spec.md` (approved)
-- Implementation startup rule: after approval, start from this `plan.md`;
-  do not reload the sources above unless the plan is missing a needed fact or
-  the code contradicts it
-- User context: {from spec — goal, user, or trigger}
-- Existing behavior: {from spec, enriched with technical detail}
-- Scope: {from spec}
-
-### Planning additions
-<!-- Technical context discovered during planning that the spec didn't
-     cover: actual files, APIs, error codes, data shapes, dependency
-     constraints. Omit section if spec was complete. -->
-
-- {new technical context, or omit entire subsection}
+- Goal: {user-facing outcome in one line}
+- Current gap: {what is wrong or outdated now}
+- Scope: {what changes and what stays out}
+- Hard constraints: {unsupported data, API limits, arch boundary, etc.}
+- Review-critical fact: {only if the reviewer needs one more fact to judge risk}
 
 **Status:** DRAFT | REVIEW | ANNOTATED | APPROVED
 **Scope:** {from spec — what changes, for whom}
 **Risk:** LOW | MEDIUM | HIGH - {one phrase justifying}
 <!-- Derived from spec Change type -->
 **Strategy:** CORRECTNESS | EQUIVALENCE | STRUCTURAL | REGRESSION
-**Budget:** ~{N} min review above trust boundary
 
 ---
 
@@ -48,25 +47,19 @@
 - Approach: {technical strategy - 1-2 short lines}
 - Risk: {risk} -> {mitigation}
 
-<!-- For each decision ask:
-     can a type, lint rule, or shared helper make this unreviewable later?
-     If yes, note it in Poka-yoke later and add it to conventions backlog. -->
+<!-- Include only real forks. Constraints/conventions are not decisions unless
+     a competing option was considered. Prefer Chose/Over/Consequence. If a
+     property is structural, prefer static enforcement to tests. -->
 
-### 🔴 D1: {decision title} {⚠️|🔒|🛡️|👁️}
+### D1: {decision title} {⚠️|🔒|🛡️|👁️}
 
 - Chose: {what}
 - Over: {alt} - {why not}
-- Locks: {what this commits to}
-- Covered by: {P1, P2 | acceptance gate | manual review}
-- Poka-yoke later: {type | lint | helper | none}
+- Consequence: {what this commits to}
 
 > ANNOTATION:
 
 <!-- Repeat D2, D3... Max 7. If more, split the feature.
-     For 🟡 REVIEW: same format as 🔴 GATE.
-     For 🟢 TRUST: one line with property reference.
-       - 🟢 T3: {title} — {one-line summary} ({P-refs})
-       No Chose/Over/Locks expansion — agent owns these.
      Criticality tags are optional. Append ⚠️ 🔒 🛡️ 👁️ to the heading
      when the reason matters. Most decisions get no tag. -->
 
@@ -80,18 +73,16 @@
 
 ### Rules
 
-<!-- Tag with [REQ-N] when the rule proves a spec requirement.
-     Untagged rules are plan-discovered — reviewer pays extra attention. -->
+<!-- Prefer plain acceptance cases. Use compact yaml only when multiple
+     interacting fields would make bullets too lossy. -->
 
-**R1: {rule}** - {plain English} [REQ-{n}]
+**R1: {rule}** - {plain English}
 
-```text
-{input conditions} -> {expected}
-{input conditions} -> {expected}
-```
+- When {condition}, {observable}
+- When {condition}, {observable}
 
 ```yaml
-case: {only when one-line fixtures are too lossy}
+case: {only when bullets are too lossy}
 when:
   {field}: {value}
 then:
@@ -100,9 +91,18 @@ then:
 
 ### Properties
 <!-- AUTHOR: human | human-validated | agent-proposed
-     Append ⚠️ 🔒 🛡️ 👁️ after invariant when the reason matters. -->
-- **P1:** {category}: {invariant} {⚠️|🔒|🛡️|👁️}
-- **P2:** {category}: {invariant}
+     Enforcement: static | runtime | manual.
+     Append ⚠️ 🔒 🛡️ 👁️ after the invariant when the reason matters. -->
+- **P1**
+  - Invariant: {category}: {what must hold} {⚠️|🔒|🛡️|👁️}
+  - Enforcement: {static | runtime | manual}
+  - Why: {why this proof mode is the right one}
+  - Evidence: {rule/script/test/manual check that proves it}
+- **P2**
+  - Invariant: {category}: {what must hold}
+  - Enforcement: {static | runtime | manual}
+  - Why: {why this proof mode is the right one}
+  - Evidence: {rule/script/test/manual check that proves it}
 
 ### Snapshot anchors
 
@@ -114,11 +114,12 @@ then:
 
 ### Code sketch (optional)
 
-```text
-{function_name}({args}) -> {return}:
-  ...{obvious setup}...
-  {THE DECISION LINE}  # why this matters
-  ...{obvious wiring}...
+```typescript
+function {name}({args}): {returnType} {
+  // ...obvious setup...
+  {decisionCarryingLine}
+  // ...obvious wiring...
+}
 ```
 
 ### Arch boundaries schematic (optional)
@@ -167,7 +168,11 @@ query loads
 
 ### Properties
 <!-- AUTHOR: human | human-validated | agent-proposed -->
-- **P1:** preservation: {identical before and after}
+- **P1**
+  - Invariant: preservation: {identical before and after}
+  - Enforcement: {static | runtime | manual}
+  - Why: {why this proof mode is the right one}
+  - Evidence: {rule/script/test/manual check that proves it}
 
 ### Delta (perf only)
 
@@ -208,7 +213,11 @@ multiple layers or have branching paths.
 
 ### Properties
 <!-- AUTHOR: human | human-validated | agent-proposed -->
-- **P1:** structural: {architecture invariant}
+- **P1**
+  - Invariant: structural: {architecture invariant}
+  - Enforcement: {static | runtime | manual}
+  - Why: {prefer static enforcement when the invariant is source-shaped}
+  - Evidence: {rule/script/test/manual check that proves it}
 
 <!-- REGRESSION -->
 
@@ -229,7 +238,11 @@ multiple layers or have branching paths.
 
 ### Properties
 <!-- AUTHOR: human | human-validated | agent-proposed -->
-- **P1:** {category}: {the violated invariant, now a property}
+- **P1**
+  - Invariant: {category}: {the violated invariant, now a property}
+  - Enforcement: {static | runtime | manual}
+  - Why: {why this proof mode is the right one}
+  - Evidence: {rule/script/test/manual check that proves it}
 
 ## Contracts
 
@@ -240,19 +253,19 @@ multiple layers or have branching paths.
 
 ### Data flow
 
-```text
+```typescript
 {source} -> {transform} -> {destination}
 ```
 
 ### Inputs
 
-```text
+```typescript
 {name}: {type}  # constraint
 ```
 
 ### Outputs
 
-```text
+```typescript
 {name}: {type}  # constraint
 ```
 
@@ -272,14 +285,14 @@ This section makes the plan executable without broad re-reading.
 
 #### Current signatures
 
-```text
+```typescript
 {path}::{symbol}({args}) -> {return}
 {path}::{symbol}({args}) -> {return}
 ```
 
 #### Local snippets
 
-```text
+```typescript
 {path}::{symbol}
   ...{existing nearby logic}...
   {decision-carrying line}
@@ -295,6 +308,32 @@ This section makes the plan executable without broad re-reading.
 
 - `{exact schema/type/export name}` in `{path}` - {why it matters}
 - `{exact route/query key/test name}` - {why it matters}
+
+### Verification evidence
+
+This section defines the bounded packet for the context-minimized verifier.
+
+#### Verifier packet
+
+- Strategy: `{CORRECTNESS | EQUIVALENCE | STRUCTURAL | REGRESSION}`
+- Properties: `{P-refs from the active strategy block above}`
+- Rules / invariants to extract:
+  `{R-refs | architecture constraints | equivalence anchor | new invariant}`
+- Verifier constraints: fresh subagent, do not read full `plan.md`, do not read
+  implementation strategy, judge only from extracted proof artifacts + bounded
+  verification evidence
+
+#### Test evidence to collect
+
+- Verification files: `{paths to tests, rules, or scripts}`
+- Evidence mapping: `{P-refs -> test names / rule names / manual checks}`
+- Commands: `{exact lint / typecheck / script / test commands}`
+- Outputs: `{pass/fail summary, generated-case counts where applicable}`
+- Runtime mutation candidates to assess:
+  `{bound flips, removed guards, constant return, skipped normalization,
+  bypassed branch/auth}`
+- Static-proof gaps to assess:
+  `{rule bypasses, files outside rule scope, formatter/lint blind spots}`
 
 ### File tree
 
@@ -318,29 +357,33 @@ change descriptions to one line.
 
 <!-- Steps reference decisions by number. Phase if natural stages
      exist, flat if not. Each phase names its target file(s).
-     For tests: include framework, arbitraries, mock setup, and
+     For runtime tests: include framework, arbitraries, mock setup, and
      assertions inline — no separate Test implementation notes.
-     Show only the correct approach, no "NOT THIS / THIS" narratives. -->
+     Prefer near-real code in the repo language. Sketch only the non-obvious
+     lines. Show only the correct approach, no "NOT THIS / THIS" narratives.
+     After rule/script/test implementation, run the context-minimized verifier
+     against the extracted proof packet before moving to review. -->
 
 1. `{path or symbol}` - {step referencing D1}
 
-   ```text
-   {logic sketch or pseudocode for the non-trivial part}
+   ```typescript
+   {near-real code sketch for the non-trivial part}
    ```
 
 2. `{path or symbol}` - {step referencing D2}
 
-   ```text
-   {logic sketch or pseudocode for the non-trivial part}
+   ```typescript
+   {near-real code sketch for the non-trivial part}
    ```
 
 ### Acceptance gate
 
-- [ ] `{test command}` passes
-- [ ] Properties {P-refs} hold (verified by tests, min 100 generated cases)
-- [ ] Spec acceptance criteria verified by tests above
-- [ ] {plan-specific checks — 2-4 items: arch boundaries, preservation,
-      performance budgets}
+- [ ] `{validation command}` passes
+- [ ] Properties {P-refs} hold with the planned enforcement
+- [ ] Spec acceptance criteria verified by the evidence above
+- [ ] `## Verification Gate` status is `passed`
+- [ ] {plan-specific checks — 2-4 items: static rules, boundaries,
+      preservation, performance budgets}
 
 ### Agent self-review (fill after implementation)
 
@@ -356,6 +399,12 @@ change descriptions to one line.
 ## Errors
 - {error} - attempt: {attempt} - resolution: {resolution}
 
+## Verification Gate
+- Status: pending
+- Last run: none
+- Verdict: not run
+- Blocking issues: verifier not run
+
 <!-- REVIEW: PENDING - add > [R]: comments inline. -->
 
 ## Review Gate
@@ -365,6 +414,7 @@ change descriptions to one line.
 - Source: plan
 - Phase: planning
 - Gate: pending
+- Verification Gate: pending
 - Current Slice: draft review artifacts above the trust boundary
 - Next Step: validate the plan and collect review approval
 - Open Questions: none
@@ -372,3 +422,4 @@ change descriptions to one line.
 
 ## State
 - Phase: planning
+- Verification Gate: pending

@@ -98,6 +98,7 @@ if [ -f "$ACTIVE_FILE" ]; then
             NEXT_STEP="$(section_field "$PRIMARY_FILE" "Resume" "Next Step")"
             OPEN_QUESTIONS="$(section_field "$PRIMARY_FILE" "Resume" "Open Questions")"
             FILES_IN_PLAY="$(section_field "$PRIMARY_FILE" "Resume" "Files in Play")"
+            VERIFICATION_GATE="$(section_field "$PRIMARY_FILE" "Resume" "Verification Gate")"
 
             if [ -z "$PHASE" ] && [ "$SOURCE" = "plan" ]; then
                 PHASE="$(legacy_plan_phase "$PLAN_FILE")"
@@ -112,6 +113,9 @@ if [ -f "$ACTIVE_FILE" ]; then
                     GATE="pending"
                 fi
             fi
+            if [ -z "$VERIFICATION_GATE" ] && [ "$SOURCE" = "plan" ]; then
+                VERIFICATION_GATE="$(section_field "$PLAN_FILE" "Verification Gate" "Status")"
+            fi
             if [ -z "$CURRENT_SLICE" ] && [ "$SOURCE" = "spec" ]; then
                 CURRENT_SLICE="review the active spec and decide if it is ready for planning"
             fi
@@ -122,6 +126,7 @@ if [ -f "$ACTIVE_FILE" ]; then
             line_if_present "Source" "$SOURCE"
             line_if_present "Phase" "$PHASE"
             line_if_present "Gate" "$GATE"
+            line_if_present "Verification gate" "$VERIFICATION_GATE"
             line_if_present "Primary file" "$PRIMARY_FILE"
             line_if_present "Current slice" "$CURRENT_SLICE"
             line_if_present "Next step" "$NEXT_STEP"

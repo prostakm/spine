@@ -13,6 +13,11 @@ if [ ! -f "$PLAN" ]; then
 fi
 
 errors=0
+is_template=0
+
+if [[ "$PLAN" == *"/_template/plan.md"* ]] || grep -qF '{FEATURE_NAME}' "$PLAN"; then
+    is_template=1
+fi
 
 # Detect legacy phase-based format — skip new-format checks entirely
 if grep -qE '^### Phase [0-9]' "$PLAN"; then
@@ -38,17 +43,52 @@ check_section() {
     fi
 }
 
+section_has_field() {
+    local heading="$1"
+    local field="$2"
+
+    awk -v heading="$heading" -v field="$field" '
+        $0 == "## " heading { in_section = 1; next }
+        in_section && /^## / { exit }
+        in_section && $0 ~ ("^[[:space:]]*-[[:space:]]*" field ":[[:space:]]*") { found = 1; exit }
+        END { exit(found ? 0 : 1) }
+    ' "$PLAN"
+}
+
+section_has_field_value() {
+    local heading="$1"
+    local field="$2"
+    local pattern="$3"
+
+    awk -v heading="$heading" -v field="$field" -v pattern="$pattern" '
+        $0 == "## " heading { in_section = 1; next }
+        in_section && /^## / { exit }
+        in_section && $0 ~ ("^[[:space:]]*-[[:space:]]*" field ":[[:space:]]*") {
+            value = $0
+            sub("^[[:space:]]*-[[:space:]]*" field ":[[:space:]]*", "", value)
+            if (value ~ pattern) found = 1
+            exit
+        }
+        END { exit(found ? 0 : 1) }
+    ' "$PLAN"
+}
+
 check_section "Context"
 check_section "Resume"
 check_section "Decisions"
 check_section "Spec + proof"
 check_section "Agent instructions"
+check_section "Verification Gate"
 check_section "Review Gate"
 check_section "State"
 
 if ! grep -qE '^\*\*Scope:\*\*' "$PLAN"; then
     echo "Missing **Scope:** line" >&2
     errors=$((errors + 1))
+fi
+
+if ! grep -qE '^## Changed code surface$' "$PLAN"; then
+    echo "NOTE: Missing ## Changed code surface section" >&2
 fi
 
 if ! grep -qE '^\*\*Strategy:\*\*' "$PLAN"; then
@@ -76,6 +116,21 @@ if ! grep -qE '^### Acceptance gate' "$PLAN"; then
     errors=$((errors + 1))
 fi
 
+if ! grep -qE '^### Verification evidence' "$PLAN"; then
+    echo "Missing ### Verification evidence in Agent instructions" >&2
+    errors=$((errors + 1))
+fi
+
+if ! grep -qE '^#### Verifier packet' "$PLAN"; then
+    echo "Missing #### Verifier packet in Verification evidence" >&2
+    errors=$((errors + 1))
+fi
+
+if ! grep -qE '^#### Test evidence to collect' "$PLAN"; then
+    echo "Missing #### Test evidence to collect in Verification evidence" >&2
+    errors=$((errors + 1))
+fi
+
 if ! grep -qE '^### Codebase packet' "$PLAN"; then
     echo "Missing ### Codebase packet in Agent instructions" >&2
     errors=$((errors + 1))
@@ -96,18 +151,147 @@ if ! grep -qE '^### Properties' "$PLAN"; then
     errors=$((errors + 1))
 fi
 
+properties_count="$(grep -cE '^### Properties$' "$PLAN" 2>/dev/null || true)"
+properties_count="${properties_count:-0}"
+if [ "$is_template" -eq 0 ] && [ "$properties_count" -ne 1 ]; then
+    echo "Plan must contain exactly one active ### Properties block (found ${properties_count})" >&2
+    errors=$((errors + 1))
+fi
+
 if grep -qE '^### Properties' "$PLAN" && ! grep -qE '<!-- AUTHOR:' "$PLAN"; then
     echo "Properties section missing AUTHOR marker (human | human-validated | agent-proposed)" >&2
     errors=$((errors + 1))
 fi
 
+if grep -qE '^### Properties' "$PLAN"; then
+    if ! awk '
+        /^### Properties$/ { in_props = 1; next }
+        in_props && /^### / { exit }
+        in_props && /^## / { exit }
+        in_props && /^[[:space:]]*-[[:space:]]+Invariant:/ { found = 1; exit }
+        END { exit(found ? 0 : 1) }
+    ' "$PLAN"; then
+        echo "Properties section missing Invariant label" >&2
+        errors=$((errors + 1))
+    fi
+
+    if ! awk '
+        /^### Properties$/ { in_props = 1; next }
+        in_props && /^### / { exit }
+        in_props && /^## / { exit }
+        in_props && /^[[:space:]]*-[[:space:]]+Enforcement:/ { found = 1; exit }
+        END { exit(found ? 0 : 1) }
+    ' "$PLAN"; then
+        echo "Properties section missing Enforcement label" >&2
+        errors=$((errors + 1))
+    fi
+
+    if ! awk '
+        /^### Properties$/ { in_props = 1; next }
+        in_props && /^### / { exit }
+        in_props && /^## / { exit }
+        in_props && /^[[:space:]]*-[[:space:]]+Why:/ { found = 1; exit }
+        END { exit(found ? 0 : 1) }
+    ' "$PLAN"; then
+        echo "Properties section missing Why label" >&2
+        errors=$((errors + 1))
+    fi
+
+    if ! awk '
+        /^### Properties$/ { in_props = 1; next }
+        in_props && /^### / { exit }
+        in_props && /^## / { exit }
+        in_props && /^[[:space:]]*-[[:space:]]+Evidence:/ { found = 1; exit }
+        END { exit(found ? 0 : 1) }
+    ' "$PLAN"; then
+        echo "Properties section missing Evidence label" >&2
+        errors=$((errors + 1))
+    fi
+fi
+
+if ! section_has_field_value "Verification Gate" "Status" '^(pending|passed|failed)$'; then
+    echo "Verification Gate missing Status field" >&2
+    errors=$((errors + 1))
+fi
+
+if ! section_has_field "Verification Gate" "Last run"; then
+    echo "Verification Gate missing Last run field" >&2
+    errors=$((errors + 1))
+fi
+
+if ! section_has_field "Verification Gate" "Verdict"; then
+    echo "Verification Gate missing Verdict field" >&2
+    errors=$((errors + 1))
+fi
+
+if ! section_has_field "Verification Gate" "Blocking issues"; then
+    echo "Verification Gate missing Blocking issues field" >&2
+    errors=$((errors + 1))
+fi
+
+if ! section_has_field "Resume" "Verification Gate"; then
+    echo "Resume missing Verification Gate field" >&2
+    errors=$((errors + 1))
+fi
+
+if ! section_has_field "State" "Verification Gate"; then
+    echo "State missing Verification Gate field" >&2
+    errors=$((errors + 1))
+fi
+
+require_heading() {
+    local heading="$1"
+    local message="$2"
+    if ! grep -qE "^### ${heading}$" "$PLAN"; then
+        echo "$message" >&2
+        errors=$((errors + 1))
+    fi
+}
+
+forbid_heading() {
+    local heading="$1"
+    local message="$2"
+    if grep -qE "^### ${heading}$" "$PLAN"; then
+        echo "$message" >&2
+        errors=$((errors + 1))
+    fi
+}
+
+if [ "$is_template" -eq 0 ]; then
+    case "$strategy" in
+        CORRECTNESS)
+            require_heading "Rules" "CORRECTNESS plans must include ### Rules"
+            forbid_heading "Equivalence anchor" "CORRECTNESS plans must delete unused ### Equivalence anchor block"
+            forbid_heading "Architecture constraints" "CORRECTNESS plans must delete unused ### Architecture constraints block"
+            forbid_heading "Reproduction" "CORRECTNESS plans must delete unused ### Reproduction block"
+            ;;
+        EQUIVALENCE)
+            require_heading "Equivalence anchor" "EQUIVALENCE plans must include ### Equivalence anchor"
+            forbid_heading "Rules" "EQUIVALENCE plans must delete unused ### Rules block"
+            forbid_heading "Architecture constraints" "EQUIVALENCE plans must delete unused ### Architecture constraints block"
+            forbid_heading "Reproduction" "EQUIVALENCE plans must delete unused ### Reproduction block"
+            ;;
+        STRUCTURAL)
+            require_heading "Architecture constraints" "STRUCTURAL plans must include ### Architecture constraints"
+            require_heading "Boundary behavior" "STRUCTURAL plans must include ### Boundary behavior"
+            require_heading "Smoke tests" "STRUCTURAL plans must include ### Smoke tests"
+            forbid_heading "Rules" "STRUCTURAL plans must delete unused ### Rules block"
+            forbid_heading "Equivalence anchor" "STRUCTURAL plans must delete unused ### Equivalence anchor block"
+            forbid_heading "Reproduction" "STRUCTURAL plans must delete unused ### Reproduction block"
+            ;;
+        REGRESSION)
+            require_heading "Reproduction" "REGRESSION plans must include ### Reproduction"
+            require_heading "Blast radius" "REGRESSION plans must include ### Blast radius"
+            require_heading "New invariant" "REGRESSION plans must include ### New invariant"
+            forbid_heading "Rules" "REGRESSION plans must delete unused ### Rules block"
+            forbid_heading "Equivalence anchor" "REGRESSION plans must delete unused ### Equivalence anchor block"
+            forbid_heading "Architecture constraints" "REGRESSION plans must delete unused ### Architecture constraints block"
+            ;;
+    esac
+fi
+
 # New-format-only checks (skip for legacy)
 if ! grep -qE '^### Phase [0-9]' "$PLAN"; then
-
-    # Budget field (warning, not error)
-    if ! grep -qE '^\*\*Budget:\*\*' "$PLAN"; then
-        echo "NOTE: Missing **Budget:** line" >&2
-    fi
 
     # Trust boundary marker
     if ! grep -q "TRUST BOUNDARY" "$PLAN"; then
@@ -115,16 +299,11 @@ if ! grep -qE '^### Phase [0-9]' "$PLAN"; then
         errors=$((errors + 1))
     fi
 
-    # Triage markers on decisions (warning, not error)
-    if ! grep -qE '^### [🔴🟡🟢]' "$PLAN" 2>/dev/null; then
-        echo "NOTE: No triage markers on decisions" >&2
-    fi
-
-    # Max 7 triage-marked decisions
-    triage_count="$(grep -cE '^### [🔴🟡🟢]' "$PLAN" 2>/dev/null || true)"
-    triage_count="${triage_count:-0}"
-    if [ "$triage_count" -gt 7 ]; then
-        echo "Too many triage-marked decisions (${triage_count}) — split the feature" >&2
+    # Max 7 decisions
+    decision_count="$(grep -cE '^### (D|[🔴🟡🟢][[:space:]]+D)[0-9]+' "$PLAN" 2>/dev/null || true)"
+    decision_count="${decision_count:-0}"
+    if [ "$decision_count" -gt 7 ]; then
+        echo "Too many decisions (${decision_count}) — split the feature" >&2
         errors=$((errors + 1))
     fi
 

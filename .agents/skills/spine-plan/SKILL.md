@@ -33,52 +33,46 @@ All others verify preservation of existing behavior.
 
 The plan has two zones separated by a trust boundary:
 
-**Above the trust boundary (human reviews):**
+Above the trust boundary (human reviews):
 
-- **Context**: carries forward approved spec facts (user context, existing
-  behavior, scope) for plan self-sufficiency. Reviewer skims for accuracy,
-  does not re-approve. **Planning additions** subsection contains only new
-  technical context discovered during planning — files, APIs, error codes,
-  data shapes. If spec was complete, Planning additions is empty or omitted.
-  Goal distills spec Problem into one line. Strategy derives from spec
-  Change type.
-- **Decisions**: only forks that need human judgment or lock in behavior.
-  Start with flat bullets for `Goal`, `Approach`, and top `Risk`.
-  Format decisions as Chose / Over / Locks / Covered by.
-  Prefix each decision heading with a triage marker: 🔴 GATE
-  (irreversible, deep-read), 🟡 REVIEW (reversible, non-trivial),
-  🟢 TRUST (covered by proof). Max 7 decisions - split if more.
-  Optionally append a criticality tag: ⚠️ (volatile/dangerous),
-  🔒 (locks future), 🛡️ (security), 👁️ (UX-critical).
-  Use sparingly — only when the tag adds real signal. Most decisions
-  get no tag.
-- **Spec + proof**: strategy-adaptive section. Include ONLY the block
-  matching the chosen strategy, delete the rest. Prefer compact bullets,
-  explicit conditionals, flow sketches, and fenced fixtures over prose.
-- **Properties**: present in every strategy block. The primary proof
-  artifact. See Property extraction below.
-- **Contracts**: input/output types crossing boundaries. Skip when spec
-  I/O already has complete types and no enrichment is needed. Include
-  when planning discovers actual signatures, query shapes, or types the
-  spec left abstract. Always include Data flow and Side effects when
-  they exist.
+- **Changed code surface**: first review surface. List only touched product
+  code and tests that matter for approval. Exclude `.spine/` bookkeeping files
+  unless the feature itself changes Spine.
+- **Context**: compact BLUF only. Focus on user goal, current gap, scope, and
+  hard constraints the reviewer needs to judge the approach. Do not make the
+  reviewer re-read broad project context or planner process notes.
+- **Risk**: top-level, explicit, and brief. If risk drives review depth, say so.
+- **Decisions**: only real forks. Constraints, conventions, or architecture
+  rules are not decisions unless a competing option was considered. Default
+  format: Chose / Over / Consequence. Keep it to what the reviewer is actually
+  approving.
+- **Spec + proof**: strategy-adaptive section. Use plain acceptance cases,
+  compact structured examples, and strict properties. Prefer reviewer-readable
+  proof artifacts over symbolic notation.
+- **Properties**: present in every strategy block. Each property must say what
+  must hold, how it will be enforced, why that enforcement is appropriate, and
+  what evidence proves it.
+- **Contracts**: input/output types crossing boundaries. Use language-tagged
+  fences that match the content (`typescript` when the content is TS-like).
+  Include only the contracts that clarify review.
 
-**Below the trust boundary (agent executes, proofs verify):**
+Below the trust boundary (agent executes, proofs verify):
 
 - **Codebase packet**: exact current signatures, focused snippets,
   test hooks/fixtures, generated names, and other current-state facts needed
   to edit safely. This is the anti-research packet for implementation.
-- **File tree**: neotree-style tree of touched files with `[M]`/`[C]`/`[D]`
-  markers. Collapse non-scoped siblings with `(...)`. One-line change
-  descriptions per file.
+- **Verification evidence**: bounded verifier packet plus the concrete runtime
+  or static evidence the executor must collect.
+- **File tree**: secondary execution overview. Neotree-style tree of touched
+  files with `[M]`/`[C]`/`[D]` markers. Collapse non-scoped siblings with
+  `(...)`. One-line change descriptions per file.
 - **Implementation strategy**: steps referencing decisions by number.
-  Phase if natural stages exist, flat if not. Each phase names its target
-  file(s). For every non-trivial step, include a code snippet or pseudocode
-  sketch. Test details (framework, arbitraries, mock setup, assertions) go
-  inline in the test phase — no separate section.
-  Show only the correct approach, no "NOT THIS / THIS" narratives.
+  Phase if natural stages exist, flat if not. For every non-trivial step,
+  include a near-real code sketch in the repo language; use pseudocode only
+  when no concrete syntax is possible.
 - **Acceptance gate**: references Properties by number. Validation command
-  is the first checkbox. 2-4 strategy-specific items max.
+  is the first checkbox. Use lint/type/script checks when a property is enforced
+  statically; use runtime tests only for runtime behavior.
 - The agent section must be executable from the plan alone. If an
   implementation detail would otherwise require reopening the codebase,
   spell it out here.
@@ -90,22 +84,23 @@ The plan has two zones separated by a trust boundary:
 The plan is the single source of truth for implementation. It MUST carry
 forward all spec facts so the agent never needs to open spec.md.
 
-**Carry-forward (reviewer skims, does not re-approve):**
-- Spec Problem → plan Context (user context, existing behavior, scope)
+Carry-forward (reviewer skims, does not re-approve):
+- Spec Problem → plan Context (user goal, current gap, scope)
 - Spec I/O → plan Contracts (if types are complete; otherwise enriched)
 - Spec Change type → plan Strategy header
 - Spec Acceptance Criteria → plan Acceptance gate (delegated, not restated)
 
-**Enrichment (reviewer deep-reads — this is the plan's unique value):**
-- Spec Requirements → plan Rules with fixture arrow notation [REQ-N]
-- Spec Invariants → plan Properties with proof framing + authorship markers
-- Spec Boundaries → plan Decisions with Chose/Over/Locks tradeoffs
-- New technical context → plan Context "Planning additions" subsection
+Enrichment (reviewer deep-reads - this is the plan's unique value):
+- Actual touched files → plan Changed code surface
+- Spec Requirements → plan Rules as plain acceptance cases
+- Spec Invariants → plan Properties with proof framing + enforcement markers
+- Spec Boundaries → plan Decisions with Chose/Over/Consequence tradeoffs
+- New review-relevant technical context → fold into compact plan Context
+- Verifier contract → plan Verification evidence + Verification Gate skeleton
 
 **Key rule:** when a spec fact appears in the plan, mark its origin
-implicitly (Strategy derived from spec, Goal distilled from spec) or
-explicitly (Rules tagged [REQ-N]). The reviewer should always know
-whether they're reading spec context or new planning output.
+implicitly (Strategy derived from spec, Goal distilled from spec). The reviewer
+should always know whether they're reading spec context or new planning output.
 
 **No spec present:** carry-forward fields are blank — the plan defines
 everything from scratch. Reviewer treats all context as new.
@@ -129,9 +124,8 @@ everything from scratch. Reviewer treats all context as new.
 ## Strategy-specific proof content
 
 ### CORRECTNESS
-- Rules: fixture arrow notation for simple cases
-  (`{input} → {expected}`); yaml blocks for complex
-  conditionals with multiple interacting fields
+- Rules: plain acceptance cases for simple scenarios; compact yaml blocks for
+  complex conditionals with multiple interacting fields
 - Properties (invariants over input domain)
 - Snapshot anchors (outputs worth locking)
 - Edge cases
@@ -167,14 +161,41 @@ everything from scratch. Reviewer treats all context as new.
 - Smoke tests (wiring proofs)
 - Properties (structural invariants)
 
-## Structural enforcement prompt
+## Enforcement ladder
 
-After drafting decisions, ask for each one:
-"Can a type, linter rule, or shared utility make this
-decision permanently unreviewable in future plans?"
-If yes → note in the decision's Locks line and propose
-a conventions.md entry. Each answer removes one item
-from every future plan's review surface.
+For every decision and property, prefer the strongest cheapest enforcement that
+matches the invariant:
+
+1. Type system
+2. Linter / formatter / static analysis rule
+3. Repo validation script
+4. Runtime test
+5. Manual review
+
+Use runtime tests for runtime behavior. Do not use tests to compensate for a
+missing static rule when the invariant is purely structural or source-shaped.
+
+Good static-enforcement candidates:
+- import boundaries
+- forbidden APIs or helpers
+- page/controller/query ownership rules
+- naming or file-placement conventions
+- raw literal / token usage bans
+- formatting and generated-file invariants
+
+Good runtime-enforcement candidates:
+- business rules
+- numeric invariants
+- data-dependent rendering
+- async branching behavior
+- API semantics
+
+If the same structural proof appears more than once, treat it as a promotion
+candidate immediately:
+- ask `promote to lint/helper/script now?`
+- prefer shared lint/rule/script enforcement in the product repo over bespoke
+  per-feature structural tests
+- record promotion candidates in `findings.md`
 
 ### REGRESSION
 - Reproduction (test, expected, actual)
@@ -188,15 +209,46 @@ When writing the plan:
 1. Pull invariants from spec.md `## Invariants` → candidate properties
 2. Classify each by category: range | relational | stability |
    preservation | structural
-3. Write properties in plain English with input domain descriptions
-4. Properties go ABOVE the trust boundary — they are review artifacts
-5. Test details (below trust boundary, inline in Implementation strategy)
-   specify the framework and generation strategies
-6. If spec has no invariants, elicit from the codebase:
+3. Choose the enforcement mode first: static | runtime | manual
+4. Write properties in plain English with input domain descriptions
+   and strict labels:
+   - `Invariant`
+   - `Enforcement`
+   - `Why`
+   - `Evidence`
+5. Properties go ABOVE the trust boundary — they are review artifacts
+6. Test details (below trust boundary, inline in Implementation strategy)
+   specify the framework and generation strategies only for runtime-enforced
+   properties
+7. Write properties so they can be copied verbatim into a verifier packet.
+   Avoid references that require reading the implementation section to recover
+   meaning.
+8. If spec has no invariants, elicit from the codebase:
    - What return values are bounded? → range
    - What increases when input increases? → relational
    - What must stay the same after this change? → preservation
    - What architectural rules must hold? → structural
+
+## Verification gate packet
+
+Every plan must define a context-minimized verifier packet below the trust
+boundary.
+
+- Purpose: let a fresh verifier judge proof strength without reading the full
+  plan or the implementation strategy
+- Extract only from the approved proof artifacts above the trust boundary:
+  active strategy, properties, and strategy-specific invariants
+- The executor adds bounded verification evidence separately: touched test or
+  rule files, relevant test names or rule names, commands run, pass/fail
+  summary, generated-case counts where applicable, and property-to-evidence
+  mapping
+- The verifier prompt should ask which runtime mutants would likely survive the
+  current runtime evidence and which properties are only weakly covered.
+  Do not apply mutation-style analysis to lint/formatter/static-rule proofs;
+  for those, ask whether the rule meaningfully enforces the invariant and what
+  bypasses would still survive.
+- `## Verification Gate` starts as `pending` and is updated to `passed` or
+  `failed` during execution
 
 ## Property authorship rule
 
@@ -236,27 +288,33 @@ If the plan reveals the feature is too large or covers multiple concerns:
 - First line of each section = its conclusion (BLUF)
 - Hard-wrap prose at 100 chars. Rewrite to fit; do not overflow.
 - Bold only the smallest crucial fragment. Never bold whole bullets.
+- Start with changed code surface, then compact context. Reviewers should not
+  need to dig for the real change surface.
 - Delete unused strategy blocks from spec+proof — don't leave empty sections
-- Every property needs a category label and an AUTHOR marker
+- Every property needs an AUTHOR marker and the labels Invariant / Enforcement /
+  Why / Evidence
 - Above trust boundary: optimize for review speed and signal
 - Below trust boundary: optimize for implementation accuracy
 - Below trust boundary: copy facts, not references, when those facts are
   required for safe edits
+- Below trust boundary: define verification packet fields explicitly so the
+  verifier never needs the full plan
 - File paths, symbols, commands in backticks
 
 ### Notation choices
 - Data/control flow: `a → b → c` (inline, one line)
-- Test fixtures: `{input} → {expected}` (one line per case)
-- Domain invariants: `- **P1:** {category}: {ALWAYS/NEVER statement}`
+- Acceptance cases: `- When {condition}, {observable}`
+- Domain invariants: strict labeled property bullets
 - Endpoint behavior: grouped by endpoint, one line per case
 - Data shapes: colon-aligned `name: type  # constraint`
-- Alternatives: Chose/Over/Locks (not prose paragraphs)
+- Alternatives: Chose/Over/Consequence (not prose paragraphs)
 - Side effects: `⚠` marker prefix
 - Criticality tags: `⚠️` volatile, `🔒` locks future, `🛡️` security,
   `👁️` UX-critical. Append to decision headings, properties, rules,
   or edge cases. Use sparingly — most items get no tag.
 - Branching (2-3 paths): aligned cases or a fenced flow diagram
-- File tree: neotree-style `▾`/`●` with `[M]`/`[C]`/`[D]` markers
+- File tree: neotree-style `▾`/`●` with `[M]`/`[C]`/`[D]` markers in the
+  agent zone; keep the first overview as changed code surface
 - Metadata: key-value pairs, not tables
 
 ### When to use diagrams
@@ -282,7 +340,7 @@ If the plan reveals the feature is too large or covers multiple concerns:
 - Use `⚠` for side effects within sketches
 
 ### Tables
-- Avoid tables in plans. Use fixture arrows, endpoint shorthand,
+- Avoid tables in plans. Use acceptance bullets, endpoint shorthand,
   key-value pairs, or indented trees instead.
 - Tables only when >4 columns are genuinely needed AND
   all columns fit within 80 chars total.

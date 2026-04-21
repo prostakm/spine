@@ -244,16 +244,60 @@ const READ_ONLY_PREFIXES = [
   "wc ", "nl ", "awk ", "cut ", "sort ", "uniq ", "tr ", "stat ",
   "git status", "git diff", "git show", "git rev-parse",
   "git branch", "git log", "git blame",
-  ".spine/scripts/validate-plan.sh",
-  "bash .spine/scripts/validate-plan.sh",
-  "sh .spine/scripts/validate-plan.sh",
 ]
+
+const READ_ONLY_SCRIPTS = [
+  ".spine/scripts/validate-plan.sh",
+  "scripts/validate-plan.sh",
+  ".spine/scripts/validate-spine-doc.sh",
+  "scripts/validate-spine-doc.sh",
+  ".spine/scripts/extract-verification-context.sh",
+  "scripts/extract-verification-context.sh",
+]
+
+function stripWrappingQuotes(token) {
+  if (!token || token.length < 2) return token
+  const first = token[0]
+  const last = token[token.length - 1]
+  if ((first === '"' || first === "'") && first === last) {
+    return token.slice(1, -1)
+  }
+  return token
+}
+
+function normalizeCommandWord(token) {
+  const unquoted = stripWrappingQuotes(token.trim())
+  return unquoted.replace(/^\.\//, "")
+}
+
+function tokenizeShellCommand(cmd) {
+  return cmd.match(/"[^"]*"|'[^']*'|\S+/g) ?? []
+}
+
+function matchesReadOnlyScript(words) {
+  if (words.length === 0) return false
+
+  const [first, second] = words
+  const firstWord = normalizeCommandWord(first)
+  const secondWord = normalizeCommandWord(second ?? "")
+
+  if (READ_ONLY_SCRIPTS.includes(firstWord)) return true
+  if (["bash", "sh"].includes(firstWord) && READ_ONLY_SCRIPTS.includes(secondWord)) {
+    return true
+  }
+
+  return false
+}
 
 function bashAllowed(cmd) {
   if (!cmd) return false
   if (SHELL_OPS.some(op => cmd.includes(op))) return false
-  const c = cmd.trim()
-  return READ_ONLY_PREFIXES.some(p => c === p.trim() || c.startsWith(p))
+
+  const words = tokenizeShellCommand(cmd)
+  if (matchesReadOnlyScript(words)) return true
+
+  const normalized = words.map(normalizeCommandWord).join(" ")
+  return READ_ONLY_PREFIXES.some(prefix => normalized === prefix.trim() || normalized.startsWith(prefix))
 }
 
 // ── Plugin ────────────────────────────────────────────────────────────────────
@@ -353,8 +397,13 @@ export const SpinePlugin = async ({ directory, client }) => {
         ?? (resume.source === "spec" ? "review the active spec and decide if it is ready for planning" : null)
       const next = fieldValue(resume.content, "Resume", "Next Step")
         ?? (resume.source === "spec" ? `approve the spec or run $spine-pwf ${slug} when ready to plan` : null)
+      const verification = resume.source === "plan"
+        ? fieldValue(resume.content, "Resume", "Verification Gate")
+          ?? fieldValue(resume.content, "Verification Gate", "Status")
+        : null
 
       const parts = [`[spine] ${slug}`, `source: ${resume.source}`, `phase: ${phase}`, `gate: ${gate}`]
+      if (verification) parts.push(`verification: ${verification}`)
       if (next) parts.push(`next: ${next}`)
 
       const msg = slice

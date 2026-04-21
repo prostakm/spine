@@ -43,6 +43,32 @@ if ! grep -qE '^- Type:' "$SPEC"; then
     errors=$((errors + 1))
 fi
 
+if ! awk '
+    /^## Invariants$/ { in_section = 1; next }
+    in_section && /^## / { exit }
+    in_section && /^[[:space:]]*-[[:space:]]+/ {
+        line = $0
+        sub(/^[[:space:]]*-[[:space:]]+/, "", line)
+        if (line !~ /^Enforcement hint:/) {
+            found = 1
+            exit
+        }
+    }
+    END { exit(found ? 0 : 1) }
+' "$SPEC"; then
+    echo "Invariants section missing invariant entry" >&2
+    errors=$((errors + 1))
+fi
+
+if ! awk '
+    /^## Invariants$/ { in_section = 1; next }
+    in_section && /^## / { exit }
+    in_section && /^[[:space:]]*-[[:space:]]+Enforcement hint:/ { found = 1; exit }
+    END { exit(found ? 0 : 1) }
+' "$SPEC"; then
+    echo "NOTE: Spec has no Enforcement hint entries under Invariants" >&2
+fi
+
 if ! "$(dirname "$0")/validate-spine-doc.sh" "$SPEC" "spec"; then
     errors=$((errors + 1))
 fi

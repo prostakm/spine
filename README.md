@@ -1,17 +1,27 @@
 # Project Spine
 
-A lightweight AI coding workflow framework for [OpenAI Codex CLI](https://developers.openai.com/codex/cli).
+A lightweight AI coding workflow framework for
+[OpenAI Codex CLI](https://developers.openai.com/codex/cli).
 
-Combines [Planning With Files](https://github.com/OthmanAdi/planning-with-files)' per-feature discipline with project-level tracking, controlled by a single autonomy flag.
+Combines
+[Planning With Files](https://github.com/OthmanAdi/planning-with-files)'
+per-feature discipline with project-level tracking, controlled by a single
+autonomy flag.
 
 ## Why
 
-| Problem | GSD's answer | PWF's answer | Spine's answer |
-|---|---|---|---|
-| Context lost between sessions | 15 agents, 40+ workflows | 3 files per task | 3 files per feature + session hooks |
-| No project-level awareness | PROJECT.md + ROADMAP.md + STATE.md (grows unbounded) | None | 3 small files (~700 tokens total) |
-| Too much / too little ceremony | All or nothing | Always lightweight | `autonomy: low\|med\|high` config flag |
-| Architecture drift across features | Conventions in STATE.md (buried) | No cross-feature memory | conventions.md checked before every implementation |
+- Context lost between sessions:
+  GSD uses many agents and workflows; PWF uses 3 files per task; Spine uses
+  3 files per feature plus session hooks.
+- No project-level awareness:
+  GSD grows project files unbounded; PWF has none; Spine keeps 3 small
+  project-level files.
+- Too much / too little ceremony:
+  GSD is heavy, PWF is always lightweight, Spine uses the
+  `autonomy: low|med|high` flag.
+- Architecture drift across features:
+  GSD buries conventions in state files, PWF has no cross-feature memory,
+  Spine checks conventions before implementation.
 
 ## Install
 
@@ -27,7 +37,8 @@ cd your-project
 The install script:
 - Creates `.spine/` with project tracking files and feature templates
 - Installs Codex skills and hooks
-- Creates or extends minimal `AGENTS.md` / `CLAUDE.md` pointers to the installed skills
+- Creates or extends minimal `AGENTS.md` / `CLAUDE.md` pointers to the
+  installed skills
 
 ## Quick Start
 
@@ -42,38 +53,43 @@ codex
 > $spine-pwf auth
 ```
 
-The workflow does not activate automatically. Invoke `$spine-spec` or `$spine-pwf` when you want the framework.
+The workflow does not activate automatically. Invoke `$spine-spec` or
+`$spine-pwf` when you want the framework.
 
 ## How It Works
 
 **Plan mode** (Shift+Tab) → design without writing code
-**Execute mode** (Shift+Tab again) → same workflow, with explicit worker/reviewer delegation for non-trivial implementation and verification
+**Execute mode** (Shift+Tab again) → same workflow, with explicit implementation,
+verification, and review stages for non-trivial work
 
 ```
-Idea → $spine-spec → spec.md → plan.md → execute → review
-       (optional)    (what)     (how)     (code)    (verify)
+Idea → $spine-spec → spec.md → plan.md → implement → verify → review
+       (optional)    (what)     (how)     (code)     (evidence) (critique)
 ```
 
 ### Files
 
-| File | Purpose | Size |
-|---|---|---|
-| `.spine/project.md` | Vision, stack, constraints | on-demand reference |
-| `.spine/conventions.md` | Active conventions + decision log | on-demand reference |
-| `.spine/progress.md` | Feature dashboard | one line per feature |
-| `.spine/config.yaml` | Autonomy flag, model preferences | ~20 lines |
-| `.spine/features/{slug}/plan.md` | Per-feature plan + compact runtime resume state | ~1-2 pages |
-| `.spine/features/{slug}/findings.md` | Research and discoveries | updated per 2-Action Rule |
-| `.spine/features/{slug}/log.md` | Session log | timestamped entries |
-| `.spine/features/{slug}/spec.md` | Requirements (optional) | ≤60 lines |
+- `.spine/project.md`: vision, stack, constraints. On-demand reference.
+- `.spine/conventions.md`: active conventions + decision log. On-demand
+  reference.
+- `.spine/progress.md`: feature dashboard. One line per feature.
+- `.spine/config.yaml`: autonomy flag, model preferences. ~20 lines.
+- `.spine/features/{slug}/plan.md`: per-feature plan + compact runtime resume
+  state. ~1-2 pages.
+- `.spine/features/{slug}/findings.md`: research and discoveries. Updated per
+  2-Action Rule.
+- `.spine/features/{slug}/log.md`: session log. Timestamped entries.
+- `.spine/features/{slug}/spec.md`: requirements + invariants. Optional, ≤60
+  lines.
 
 ### Autonomy Levels
 
-| Level | Planning | Execution | Review |
-|---|---|---|---|
-| **low** | User approves key planning choices | Pauses after each implementation step | User requests manually |
-| **med** | User approves plan once | Runs without pausing | Auto after final implementation pass |
-| **high** | Auto-approved if no conflicts | Delegates bounded work, one writing worker at a time | Auto with summary |
+- `low`: user approves key planning choices, execution pauses after each
+  implementation step, review is manual.
+- `med`: user approves the plan once, execution runs without pausing, review is
+  automatic after the final implementation pass.
+- `high`: auto-approved if no conflicts, delegates bounded work one writing
+  worker at a time, review is automatic with summary.
 
 Set in `.spine/config.yaml`:
 ```yaml
@@ -82,9 +98,12 @@ autonomy: med  # low | med | high
 
 ### Hooks
 
-- **SessionStart**: Emits compact active-feature resume state on startup/resume; deeper `.spine/` files stay on-demand
-- **PreToolUse / PostToolUse**: Emit structured Bash-scoped reminders for active-plan discipline
-- **Stop**: Returns a blocking hook decision while implementation checklists remain incomplete
+- **SessionStart**: Emits compact active-feature resume state on
+  startup/resume; deeper `.spine/` files stay on-demand.
+- **PreToolUse / PostToolUse**: Emit structured Bash-scoped reminders for
+  active-plan discipline.
+- **Stop**: Returns a blocking hook decision while acceptance checklists or the
+  verification gate remain incomplete
 
 ## Customization
 

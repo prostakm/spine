@@ -37,8 +37,11 @@ dependents: []
 - [ ] {testable criterion}
 
 ## Invariants
-<!-- Categories: range | relational | stability | preservation | structural -->
+<!-- Categories: range | relational | stability | preservation | structural.
+     Enforcement hint: static | runtime | manual. Prefer static for rules that
+     lint, types, formatters, or repo scripts can enforce. -->
 - {category}: {plain English invariant}
+  - Enforcement hint: {static | runtime | manual}
 
 ## Open Questions
 - {unresolved - decide before planning}

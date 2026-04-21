@@ -11,7 +11,7 @@ allow_implicit_invocation: false
 ## Gates — stop at each, never auto-advance
 
 ```
-SPEC (opt) ──► STOP ──► PLAN ──► STOP ──► IMPLEMENT ──► REVIEW
+SPEC (opt) ──► STOP ──► PLAN ──► STOP ──► IMPLEMENT ──► VERIFY ──► REVIEW
                "plan {slug}"    user reviews plan.md
                                 inline > [R]: comments
                                 marks APPROVED
@@ -28,6 +28,8 @@ SPEC (opt) ──► STOP ──► PLAN ──► STOP ──► IMPLEMENT ─�
 ## Planning phase
 Use **spine-plan** skill for plan creation.
 Planning is complete when `plan.md` passes `.spine/scripts/validate-plan.sh`.
+Run that validator before asking for review approval; a pending review gate still
+allows explicit validator runs.
 
 ### Workflow enforcement
 - SessionStart, Stop, and OpenCode review gates are enforced by hooks/plugins
@@ -36,22 +38,19 @@ Planning is complete when `plan.md` passes `.spine/scripts/validate-plan.sh`.
 - If a hook or gate blocks progress, fix the workflow state instead of bypassing it
 - While the plan gate is pending, only explicit edits to `plan.md` / `spec.md`
   and read-only commands are allowed
+- Allowed read-only commands while review is pending include plan-validation
+  commands such as `.spine/scripts/validate-plan.sh`, `scripts/validate-plan.sh`,
+  and their `./...` variants
 
 ## Plan Review (Gate 2)
 
 After creating plan.md:
 
 > "Plan at `.spine/features/{slug}/plan.md`.
-> Budget: ~{N} min. Start with 🔴 decisions, then properties.
-> Review `Context` (skim spec-derived fields, deep-read Planning
-> additions), `Decisions`, `Spec + proof`, and `Contracts`.
+> Start with `Changed code surface` and top `Risk`.
+> Then review `Decisions`, `Spec + proof`, and `Contracts`.
 > Stop at the trust boundary.
-> 🔴 GATE decisions need deep reading. 🟢 TRUST decisions are
-> covered by properties — skip unless the properties look wrong.
-> Criticality tags (⚠️ 🔒 🛡️ 👁️) mark volatile, locking, security,
-> or UX-critical items — verify these first.
-> Rules tagged [REQ-N] prove spec requirements — verify the fixture,
-> don't re-approve the requirement.
+> Focus comments on chosen approach, proof cases, and missing risk.
 > Mark properties you approve with `> [R]: ✓`.
 > Add `> [R]:` comments next to anything you want changed.
 > Mark `> [R]: APPROVED` when ready, or say `approved` / `plan approved` in chat.
@@ -62,7 +61,8 @@ Then STOP.
 ### Inline review protocol
 User adds `> [R]:` comments in plan.md, co-located with context:
 ```
-**P1:** range: net pay is never negative
+**P1**
+  - Invariant: range: net pay is never negative
 > [R]: also add: net pay never exceeds gross pay
 ```
 
@@ -80,8 +80,10 @@ User adds `> [R]:` comments in plan.md, co-located with context:
 - Main thread owns approvals, integration decisions, and final user communication
 - Keep trivial edits on the main thread
 - If blocked or stuck, escalate to the user rather than spawning additional agents
+- Exception: one fresh context-minimized verifier subagent is required after
+  the planned evidence passes and before review/completion
 - Do not change the workflow shape:
-  `spec/brainstorm (optional) -> plan -> approval -> implement -> review`
+  `spec/brainstorm (optional) -> plan -> approval -> implement -> verify -> review`
 
 ### Plan-first execution
 - Approved `plan.md` is the implementation source of truth
@@ -95,19 +97,22 @@ User adds `> [R]:` comments in plan.md, co-located with context:
   (signature, snippet, test hook, generated name, repo instruction), STOP and
   patch the plan first rather than rebuilding context ad hoc
 
-### Test-first sequence
-For all strategies: implement property tests FIRST, then production code.
-Properties in the plan are specifications. Implementation serves them.
+### Proof-first sequence
+For all strategies: implement the plan's strongest enforcement FIRST, then
+production code. Properties in the plan are specifications. Implementation
+serves them.
 
-- **CORRECTNESS**: write tests from properties and approved conditional fixtures first,
-  then implement until tests pass
-- **EQUIVALENCE**: capture equivalence anchor before changes, write
-  preservation property test, then refactor, assert anchor holds
-- **STRUCTURAL**: implement architecture constraint tests first
-  (import checks, boundary assertions), then wire the plumbing
-- **REGRESSION**: write reproduction test first (must fail on current
-  code), then fix, then verify blast radius, then add the new
-  invariant as a permanent property test
+- **Static-enforced properties**: add the type, lint, formatter, or repo script
+  rule first when the invariant is structural or source-shaped
+- **CORRECTNESS**: write runtime tests from properties and approved fixtures
+  first, then implement until tests pass
+- **EQUIVALENCE**: capture equivalence anchor before changes, add the lightest
+  preservation proof that matches the invariant, then refactor, assert anchor
+  holds
+- **STRUCTURAL**: implement lint/type/script enforcement first where possible;
+  add smoke tests only for runtime wiring or boundary behavior
+- **REGRESSION**: write the reproduction check first; if the bug is structural,
+  prefer a static rule over a permanent runtime regression test
 
 ### Property authorship protection
 Properties above the trust boundary are owned by the reviewer.
@@ -120,14 +125,37 @@ Properties above the trust boundary are owned by the reviewer.
 - Property is incomplete (missing edge case) → propose an additional
   property, mark it `agent-proposed`. Existing properties stay as-is.
 
-### Property test implementation
-- Use the project's property testing framework
+### Property implementation
+- For `Enforcement: static`, implement the rule in the strongest practical
+  layer: type system, linter/static analysis, formatter, or repo validation
+  script
+- For `Enforcement: runtime`, use the project's property testing framework
   (Hypothesis, fast-check, jqwik, rapid, FsCheck, QuickCheck, etc.)
-- If no property framework exists, add one as the first implementation
-  step. Note the dependency in findings.md.
-- Minimum 100 generated cases per property (exhaustive if domain is finite)
+- If no property framework exists and runtime properties require one, add it as
+  the first implementation step. Note the dependency in findings.md.
+- Minimum 100 generated cases per runtime property (exhaustive if domain is
+  finite)
 - Property test files live alongside but separate from example-based tests
-- Preserve traceability: plan property → test function docstring/comment
+- Preserve traceability: plan property → evidence source (rule, script, or test)
+
+### Coverage verification gate
+- After static rules, scripts, and tests pass, extract a verifier packet from
+  the approved plan with
+  `.spine/scripts/extract-verification-context.sh ".spine/features/{slug}/plan.md"`
+- Launch one fresh verifier subagent with only:
+  - the extracted verifier packet
+  - bounded verification evidence from the plan's `### Verification evidence`
+    contract
+- Do NOT give the verifier the full `plan.md`, implementation strategy,
+  findings.md, or freeform implementation narrative
+- Ask the verifier to judge each property as `covered`, `weak`, or `uncovered`
+  and list likely surviving runtime mutants for runtime-enforced properties.
+  For static-enforced properties, ask for rule/script gaps or plausible
+  bypasses instead of mutation-style feedback.
+- If the verifier says `failed` or reports weak/uncovered properties, STOP and
+  strengthen the rule, script, or test evidence before review
+- Update `## Verification Gate` with `passed` or `failed`, last run, verdict,
+  and blocking issues before moving on
 
 ### Execution rules
 1. Work through the implementation strategy sequentially
@@ -136,8 +164,14 @@ Properties above the trust boundary are owned by the reviewer.
 3. Treat the approved `plan.md` as the startup brief and ongoing handoff;
    keep `## Resume`, acceptance checks, and the implementation packet current
 4. **2-Action Rule**: after every 2 view/search/read ops → update findings.md
-5. On each completed step: update acceptance checks, `## Resume`, and log.md
-6. **3-Strike errors**: diagnose → alternative → rethink → escalate to user
+5. Workflow friction is first-class: if a hook, validator, or review ritual slows
+   or blocks progress, record it in findings.md `## Workflow Friction` with the
+   trigger, impact, and suggested fix before moving on
+6. On each completed step: update acceptance checks, `## Resume`, and log.md;
+   every log entry must include `Workflow friction`, even when the value is `none`
+7. Before review or completion: `## Verification Gate` must be `passed`
+8. Review only starts after the verification gate passes
+9. **3-Strike errors**: diagnose → alternative → rethink → escalate to user
 
 ### Decision questions during implementation
 - **low**: ask before unplanned files, alternatives, any deviation
@@ -149,11 +183,12 @@ Properties above the trust boundary are owned by the reviewer.
    - Hardest: which decision was hardest to implement
    - Least confident: what might be wrong
    - Deviations: what differs from the plan and why
-2. Acceptance gate complete (all properties pass, all checks done)
-3. Review manually or escalate to user
-4. Update `.spine/progress.md` → `done`
-5. Present findings.md `## Promote to Project` candidates
-6. Clear `.spine/active-feature` (write empty or remove file)
+2. Verification gate complete (`## Verification Gate` is `passed`)
+3. Acceptance gate complete (all properties pass, all checks done)
+4. Review manually or escalate to user
+5. Update `.spine/progress.md` → `done`
+6. Present findings.md `## Promote to Project` candidates
+7. Clear `.spine/active-feature` (write empty or remove file)
 
 ## Cleanup (mid-flow reset)
 If user wants to start over or abandon current feature:

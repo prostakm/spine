@@ -552,6 +552,7 @@ copy_if_missing "$SCRIPT_DIR/templates/.spine/config.yaml"      ".spine/config.y
 remove_legacy_yaml_section ".spine/config.yaml" "agents"
 ensure_yaml_top_level_key ".spine/config.yaml" "autonomy" "autonomy: med  # low | med | high"
 ensure_yaml_child_line ".spine/config.yaml" "models" "  brainstorm: { model: gpt-5.4, effort: high }"
+ensure_yaml_child_line ".spine/config.yaml" "models" "  verification: { model: gpt-5.4, effort: high }"
 
 # Active feature tracker
 if [ ! -f ".spine/active-feature" ]; then
@@ -574,6 +575,8 @@ sync_managed_file "$SCRIPT_DIR/scripts/validate-plan.sh" ".spine/scripts/validat
 chmod +x ".spine/scripts/validate-plan.sh" 2>/dev/null || true
 sync_managed_file "$SCRIPT_DIR/scripts/validate-spec.sh" ".spine/scripts/validate-spec.sh"
 chmod +x ".spine/scripts/validate-spec.sh" 2>/dev/null || true
+sync_managed_file "$SCRIPT_DIR/scripts/extract-verification-context.sh" ".spine/scripts/extract-verification-context.sh"
+chmod +x ".spine/scripts/extract-verification-context.sh" 2>/dev/null || true
 sync_managed_file "$SCRIPT_DIR/scripts/cleanup-features.sh" ".spine/scripts/cleanup-features.sh"
 chmod +x ".spine/scripts/cleanup-features.sh" 2>/dev/null || true
 

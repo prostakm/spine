@@ -36,6 +36,8 @@ Concerns to probe:
   - "If I run this twice with same input, what stays the same?" → stability
   - "What must be identical before and after this change?" → preservation
   - "What business rules are absolute?" → range or relational
+  - "Is this best enforced by code behavior, or by a static rule/script?" →
+    enforcement hint
 
 **Architect** — when the feature is technical/infrastructure:
 triggers: migration, refactor, API, integration, performance, security, schema, deploy
@@ -54,8 +56,10 @@ Concerns to probe:
   - "What is identical before and after this change?" → preservation
   - "What must always be true about the data flow?" → relational
   - "Is this operation idempotent? Deterministic?" → stability
+  - "Can this be enforced by type system, lint, or a repo script instead of a
+    runtime test?" → enforcement hint
 
-**Both roles always ask:**
+Both roles always ask:
 - What is explicitly NOT in scope?
 - What approaches should the agent NOT try?
   (These become `## Boundaries` → `DO NOT:` entries)
@@ -65,6 +69,8 @@ Concerns to probe:
   bugfix, performance, infrastructure)
 - What must ALWAYS be true, for ANY valid input?
   (These become properties in the plan.)
+- For structural/source-shape rules: should enforcement be static
+  (types/lint/script) instead of runtime tests?
 
 ### Step 3: Elicit requirements
 Read autonomy from `.spine/config.yaml`:
@@ -87,6 +93,10 @@ Use explorer findings to make questions specific:
 - Tag the role used: `**Role:** product-owner` or `**Role:** architect`
 - Include `## Change type` and `## Invariants` when known
 - Invariants section uses category labels (range, relational, stability, preservation, structural)
+- When known, add an `Enforcement hint` under each invariant:
+  `static | runtime | manual`
+- Prefer `static` for source-shape and architectural invariants that lint,
+  types, or repo scripts can enforce
 - Every invariant should be expressible as "for all valid X, Y holds"
   - if it can't be, it's an acceptance criterion, not an invariant
 - Hard-wrap prose at 100 chars; rewrite to fit

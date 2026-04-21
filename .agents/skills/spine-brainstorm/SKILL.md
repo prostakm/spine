@@ -107,6 +107,8 @@ Turn an idea into a short, approved design that is clear enough to hand off to
   - key flow or architecture choices
   - invariants: what must always be true (use category vocabulary:
     range, relational, stability, preservation, structural)
+  - enforcement hints: which invariants should be enforced statically vs at
+    runtime
   - verification / acceptance checks
 - Write the proposed design to `## Proposed Design` in spec.md with `Status: draft`
 - Get user approval before writing the spec
@@ -120,6 +122,9 @@ Turn an idea into a short, approved design that is clear enough to hand off to
 - Include `## Change type` and `## Invariants` sections to help the
   planner select proof strategy. Use category labels:
   range, relational, stability, preservation, structural.
+  When known, add `Enforcement hint: static | runtime | manual` under each
+  invariant. Prefer `static` for architectural and source-shape rules that a
+  type, linter, formatter, or repo script can enforce.
   If no invariants emerged during brainstorming, ask:
   "What must always be true about this feature, for any valid input?"
 - Include `## Boundaries` with both `NOT:` exclusions and `DO NOT:`

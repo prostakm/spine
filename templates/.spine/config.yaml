@@ -1,2 +1,5 @@
 # Project Spine configuration
 autonomy: med  # low | med | high
+models:
+  brainstorm: { model: gpt-5.4, effort: high }
+  verification: { model: gpt-5.4, effort: high }

@@ -25,12 +25,15 @@ control how much the agent asks before acting.
   requirements before planning, producing `.spine/features/{slug}/spec.md`.
 - REQ-7: Plan mode integration — framework uses Codex plan mode (Shift+Tab)
   for the design phase and structured PWF-style hooks for execution discipline.
+- REQ-8: Hard verification gate — execution includes a context-minimized
+  verifier step that receives only extracted proof artifacts from `plan.md`
+  plus bounded test evidence, and blocks completion when coverage is weak.
 - REQ-9: Explicit invocation — the framework does not activate automatically;
   users invoke `$spine-spec` or `$spine-pwf` when they want the workflow.
-- REQ-9: Inspired by PWF — planning workflow uses PWF's proven patterns
+- REQ-10: Inspired by PWF — planning workflow uses PWF's proven patterns
   (3 files, hooks, 2-Action Rule, 3-Strike Protocol) reimplemented for
   `.spine/` directory structure without runtime dependency on PWF.
-- REQ-10: Install/update scripts — `install.sh` and `update.sh` bootstrap or
+- REQ-11: Install/update scripts — `install.sh` and `update.sh` bootstrap or
   refresh the framework, copy files, patch AGENTS.md, and manage Codex config.
 
 ## Out of Scope
@@ -44,11 +47,15 @@ control how much the agent asks before acting.
 ## Acceptance Criteria
 
 - [ ] Running `./install.sh` in a fresh repo creates all `.spine/` and `.codex/` files
-- [ ] AGENTS.md is created (or appended to existing) with a short opt-in note that points workflow details to skills
+- [ ] AGENTS.md is created (or appended to existing) with a short opt-in note
+      that points workflow details to skills
 - [ ] Codex CLI recognizes spine-spec and spine-pwf as available skills
 - [ ] Creating a feature with `$spine-spec` produces spec.md in the correct location
+- [ ] Spec template captures `Change type`, `Invariants`, and optional enforcement hints
 - [ ] Planning workflow creates plan.md/findings.md/log.md in the correct feature directory
-- [ ] PreToolUse and PostToolUse hooks emit structured messages for Codex
+- [ ] Plan template includes a verifier packet contract and `## Verification Gate`
+- [ ] `.spine/scripts/extract-verification-context.sh` emits only proof artifacts
+- [ ] Stop hook blocks when `## Verification Gate` is not `passed` in verification/review phases
 - [ ] Stop hook blocks when active-feature work remains incomplete
 - [ ] SessionStart hook restores project and feature context
 - [ ] `.spine/progress.md` updates on feature completion

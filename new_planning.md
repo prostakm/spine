@@ -1,14 +1,26 @@
-Here's the modification guide. I'll work through each file that needs to change, what changes, and why — organized by the order you'd actually do the work.
+> Historical note: this was the design memo for the planning overhaul.
+> The source of truth is now the implemented skills, templates, validators,
+> and examples in this repo.
+
+Here's the modification guide. I'll work through each file that needs to
+change, what changes, and why - organized by the order you'd actually do the
+work.
 
 ---
 
 ## 1. The template — `templates/.spine/features/_template/plan.md`
 
-This is the foundation. Everything else references it. Replace the current template entirely.
+This is the foundation. Everything else references it. Replace the current
+template entirely.
 
-**What changes:** The current template mixes review-relevant content (Goal, Approach, Alternatives) with agent instructions (phases with file paths and pseudocode) in a flat structure. The new template separates these into two zones with a trust boundary.
+**What changes:** The current template mixes review-relevant content
+(Goal, Approach, Alternatives) with agent instructions
+(phases with file paths and pseudocode) in a flat structure. The new template
+separates these into two zones with a trust boundary.
 
-**What's preserved:** The Context section pointing to project files, the Review Gate, the Decisions table, and the `> [R]:` inline review protocol all carry over unchanged — they already work well.
+**What's preserved:** The Context section pointing to project files, the Review
+Gate, the Decisions table, and the `> [R]:` inline review protocol all carry
+over unchanged - they already work well.
 
 ```markdown
 # Feature: {FEATURE_NAME}
@@ -208,13 +220,24 @@ If any assertion changes → escalate.
 - Phase: planning
 ```
 
-**Key structural differences from the old template:** Goal/Approach/Alternatives move inside the Decisions section rather than floating at the top — they're the first decision. The old generic phase structure (Phase 1, Phase 2... each with Verify/Status) is replaced by the flat Agent Instructions section with an Acceptance Gate. Phases within Agent Instructions are still possible ("phase if needed, flat if not") but they're now below the trust boundary, which means the reviewer doesn't need to read them.
+Key structural differences from the old template:
+Goal/Approach/Alternatives move inside the Decisions section rather than
+floating at the top - they're the first decision. The old generic phase
+structure (Phase 1, Phase 2... each with Verify/Status) is replaced by the
+flat Agent Instructions section with an Acceptance Gate. Phases within Agent
+Instructions are still possible ("phase if needed, flat if not") but they're
+now below the trust boundary, which means the reviewer doesn't need to read
+them.
 
 ---
 
 ## 2. The skill — `.agents/skills/spine-pwf/SKILL.md`
 
-**What changes:** The "Plan Creation" section needs to reflect the new template structure and the strategy selector. The detail requirements shift from "file paths + function signatures + pseudocode for everything" to "file paths + signatures in Agent Instructions, but decisions + proof sketch + contracts above the trust boundary."
+**What changes:** The "Plan Creation" section needs to reflect the new
+template structure and the strategy selector. The detail requirements shift
+from "file paths + function signatures + pseudocode for everything" to
+"file paths + signatures in Agent Instructions, but decisions + proof sketch +
+contracts above the trust boundary."
 
 Replace the `### Detail requirements` block:
 
@@ -300,11 +323,21 @@ In `## Implementation (after Gate 2)`, add a note about strategy-driven executio
 
 ## 3. The example — `docs/EXAMPLE-PLAN.md`
 
-The current example (auth-session) is implementation-heavy with Go code in every phase. Replace with two short examples demonstrating different strategies. Keep the existing one as `docs/EXAMPLE-PLAN-LEGACY.md` for reference during transition.
+The current example (auth-session) is implementation-heavy with Go code in
+every phase. Replace with two short examples demonstrating different
+strategies. Keep the existing one as `docs/EXAMPLE-PLAN-LEGACY.md` for
+reference during transition.
 
-Create a new `docs/EXAMPLE-PLAN.md` with a CORRECTNESS example (compact, payroll-like) and a STRUCTURAL example (new endpoint). I'd keep each under 80 lines — the old example was 120+ lines of Go code that a reviewer would have to parse. The new ones should be readable in under 3 minutes.
+Create a new `docs/EXAMPLE-PLAN.md` with a CORRECTNESS example
+(compact, payroll-like) and a STRUCTURAL example (new endpoint). I'd keep each
+under 80 lines - the old example was 120+ lines of Go code that a reviewer
+would have to parse. The new ones should be readable in under 3 minutes.
 
-The CORRECTNESS example should show: a few decisions, a rules table with fixture data, 3-4 Hypothesis properties, and a compact agent instructions section. The auth-session example you already have is actually closer to STRUCTURAL — it adds endpoints, middleware, and storage without complex domain logic. Re-framing it with the new template would be instructive.
+The CORRECTNESS example should show: a few decisions, a rules table with
+fixture data, 3-4 Hypothesis properties, and a compact agent instructions
+section. The auth-session example you already have is actually closer to
+STRUCTURAL - it adds endpoints, middleware, and storage without complex domain
+logic. Re-framing it with the new template would be instructive.
 
 ---
 
@@ -360,7 +393,9 @@ fi
 
 ## 5. The spec template — `templates/.spine/features/_template/spec.md`
 
-The spec template feeds into the plan. Two small additions make the handoff smoother — they give the planner enough signal to pick a strategy and pre-populate the proof sketch.
+The spec template feeds into the plan. Two small additions make the handoff
+smoother - they give the planner enough signal to pick a strategy and
+pre-populate the proof sketch.
 
 Add after `## Constraints`:
 
@@ -381,7 +416,11 @@ Add to `## Acceptance Criteria`:
 - {e.g., "tax is never negative"}
 ```
 
-This is a lightweight addition — two fields, both optional. But when they're filled in during `$spine-spec`, the planner doesn't have to invent the proof strategy or hunt for invariants. The spec skill's elicitation flow already asks about acceptance criteria; it just needs to also ask "what must always be true?" for the invariants field.
+This is a lightweight addition - two fields, both optional. But when they're
+filled in during `$spine-spec`, the planner doesn't have to invent the proof
+strategy or hunt for invariants. The spec skill's elicitation flow already asks
+about acceptance criteria; it just needs to also ask
+"what must always be true?" for the invariants field.
 
 ---
 
@@ -456,20 +495,35 @@ In `templates/CLAUDE.md`, update the plan creation steps (section "Starting a fe
 
 ## 9. What NOT to change
 
-**The hooks stay as-is.** `session-start.sh`, `stop.sh`, and `opencode-spine.js` read plan.md for status and phase markers. The new template keeps `## Review Gate` and `## State` in the same format, so hooks don't break.
+**The hooks stay as-is.** `session-start.sh`, `stop.sh`, and
+`opencode-spine.js` read plan.md for status and phase markers. The new
+template keeps `## Review Gate` and `## State` in the same format, so hooks
+don't break.
 
-**The `> [R]:` review protocol stays as-is.** It already works well. The new template just focuses where annotations land — above the trust boundary.
+**The `> [R]:` review protocol stays as-is.** It already works well. The new
+template just focuses where annotations land - above the trust boundary.
 
-**The `config.yaml` autonomy levels stay as-is.** The strategy selector is orthogonal to autonomy. Low/med/high controls how much the planner asks before committing; the strategy controls what the plan contains.
+**The `config.yaml` autonomy levels stay as-is.** The strategy selector is
+orthogonal to autonomy. Low/med/high controls how much the planner asks before
+committing; the strategy controls what the plan contains.
 
-**Feature cleanup and backlog scripts stay as-is.** They operate on directories and slugs, not plan content.
+Feature cleanup and backlog scripts stay as-is. They operate on directories and
+slugs, not plan content.
 
 ---
 
 ## 10. Migration path
 
-For existing features with plans in the old format, don't retrofit. The old format still works — it just doesn't get the review efficiency gains. New features use the new template automatically.
+For existing features with plans in the old format, don't retrofit. The old
+format still works - it just doesn't get the review efficiency gains. New
+features use the new template automatically.
 
-To test the new template before committing: create a feature with `$spine-pwf`, check that `validate-plan.sh` passes, check that `stop.sh` still reads the status correctly, and check that session recovery (`session-start.sh`) still picks up the active feature context.
+To test the new template before committing: create a feature with
+`$spine-pwf`, check that `validate-plan.sh` passes, check that `stop.sh` still
+reads the status correctly, and check that session recovery
+(`session-start.sh`) still picks up the active feature context.
 
-The one risk: if the validate script's old checks are in CI and you update the script before updating existing in-flight plans, those plans will fail validation. Update the script to accept both old and new formats during transition — check for either `### Phase 1` OR `### Acceptance gate`.
+The one risk: if the validate script's old checks are in CI and you update the
+script before updating existing in-flight plans, those plans will fail
+validation. Update the script to accept both old and new formats during
+transition - check for either `### Phase 1` OR `### Acceptance gate`.
