@@ -5,19 +5,22 @@
 ````markdown
 # Feature: payroll-rounding
 
-## Changed code surface
+## Changed Surface
 
 ```text
-payroll/calculator.py                              [M] final rounding behavior
-tests/test_payroll.py                             [M] fixture + property coverage
+payroll/
+├── calculator.py                      [M] final-only rounding path
+└── tests/
+    └── test_payroll.py               [M] fixture + property coverage
 ```
 
 ## Context
-- Spec: `.spine/features/payroll-rounding/spec.md` (approved)
+
 - Goal: fix net-pay rounding in payroll exports.
-- Current gap: components round independently before final net pay.
-- Scope: change net-pay math only.
-- Hard constraints: finance worksheet examples stay authoritative.
+- Gap: components round independently before final net pay.
+- In: net-pay math only.
+- Out: tax rules and export shape.
+- Constraints: finance worksheet examples stay authoritative.
 
 **Status:** REVIEW
 **Scope:** Correct net-pay rounding for hourly payroll exports
@@ -33,19 +36,18 @@ tests/test_payroll.py                             [M] fixture + property coverag
   fixtures and properties.
 - Risk: rule mismatch -> lock worksheet examples first.
 
-### D1: Final-only rounding ⚠️
+> [!CAUTION] D1: Final-only rounding
+> - **Chose:** banker rounding at the final net-pay step.
+> - **Over:** per-component half-up rounding — disagrees with finance worksheet.
+> - **Consequence:** all callers use one shared calculator path.
 
-- Chose: banker rounding at the final net-pay step.
-- Over: per-component half-up rounding - disagrees with finance worksheet.
-- Consequence: all callers use one shared calculator path.
-
-> ANNOTATION:
+---
 
 ## Spec + proof
 
 ### Rules
 
-**R1: Final-only rounding** - round once after tax and deduction totals.
+**R1: Final-only rounding** — round once after tax and deduction totals.
 
 - When gross is `40h * 25.125` with no deductions, net pay is `$1,005.00`.
 - When gross is `12h * 19.995` with flat `10%` tax, net pay is `$215.95`.
@@ -53,21 +55,19 @@ tests/test_payroll.py                             [M] fixture + property coverag
 
 ### Properties
 <!-- AUTHOR: human -->
-- **P1**
-  - Invariant: range: net pay is never negative ⚠️
-  - Enforcement: runtime
-  - Why: depends on calculated values across many inputs.
-  - Evidence: property test over generated hours, rates, tax, and deductions.
-- **P2**
-  - Invariant: relational: increasing hours never decreases net pay.
-  - Enforcement: runtime
-  - Why: requires comparing computed outcomes across input pairs.
-  - Evidence: property test over monotonic input pairs.
+
+> [!CAUTION] **P1** — `runtime` — `human`
+> **Invariant:** range: net pay is never negative.
+> **Evidence:** property test over generated hours, rates, tax, and deductions.
+
+- **P2** — `runtime` — `human`
+  Invariant: relational: increasing hours never decreases net pay.
+  Evidence: property test over monotonic input pairs.
 
 ### Edge cases
 
 - zero-hour timesheet
-- deductions larger than gross ⚠️
+- deductions larger than gross
 
 ## Contracts
 
@@ -89,6 +89,43 @@ Money(cents: int, currency: str)
 
 ## Agent instructions
 
+### Implementation strategy
+
+1. `payroll/calculator.py::calculate_net_pay` - implement D1 in the existing
+   calculator path.
+
+   Current touch point:
+
+   ```python
+   payroll/calculator.py::calculate_net_pay(hours, rate, tax, deductions) -> Money
+   ```
+
+   Current local shape:
+
+   ```python
+   gross = round_component(hours * rate)
+   taxed = round_component(apply_tax(gross, tax))
+   return money(taxed - sum(deductions))
+   ```
+
+   ```python
+   gross = hours * rate
+   taxed = apply_tax(gross, tax)
+   return money(round_final(max(taxed - sum(deductions), 0)))
+   ```
+
+2. `tests/test_payroll.py` - keep the approved proof in the runtime suite.
+
+   Existing proof hooks:
+
+   - `money_examples` in `tests/test_payroll.py` - worksheet-backed fixtures
+
+   ```python
+   @given(hours=hours(), rate=rates(), tax=taxes(), deductions=deductions())
+   def test_net_pay_never_negative(...):
+       assert calculate_net_pay(...) >= money(0)
+   ```
+
 ### Verification evidence
 
 #### Verifier packet
@@ -109,19 +146,22 @@ Money(cents: int, currency: str)
 ````markdown
 # Feature: match-details-boundary
 
-## Changed code surface
+## Changed Surface
 
 ```text
-web/src/slices/match-details/page.tsx              [M] ready-state UI only
-web/eslint/slice-boundaries.js                     [C] boundary rule for page imports
-web/src/test/match-details-page.test.tsx           [M] runtime branch coverage
+web/
+├── src/slices/match-details/page.tsx  [M] ready-state UI only
+├── eslint/slice-boundaries.js         [C] page import boundary rule
+└── src/test/match-details-page.test.tsx [M] runtime branch coverage
 ```
 
 ## Context
+
 - Goal: refresh the ready page without moving query or controller logic.
-- Current gap: page code is drifting toward route/query ownership.
-- Scope: keep route/controller/query orchestration unchanged.
-- Hard constraints: `page.tsx` may hold only transient visual state.
+- Gap: page code is drifting toward route/query ownership.
+- In: ready-state UI and boundary enforcement.
+- Out: controller, query, and API orchestration.
+- Constraints: `page.tsx` may hold only transient visual state.
 
 **Status:** REVIEW
 **Scope:** Preserve slice boundary while refreshing the ready-state view
@@ -136,11 +176,12 @@ web/src/test/match-details-page.test.tsx           [M] runtime branch coverage
 - Approach: enforce the page boundary statically, then update the view.
 - Risk: page imports query logic -> block it with an eslint rule.
 
-### D1: Enforce page ownership statically 👁️
+> [!IMPORTANT] D1: Enforce page ownership statically
+> - **Chose:** add an eslint rule banning query/API imports from routed page files.
+> - **Over:** page-boundary unit tests only — weaker and easier to bypass.
+> - **Consequence:** future boundary regressions fail in lint before review.
 
-- Chose: add an eslint rule banning query/API imports from routed page files.
-- Over: page-boundary unit tests only - weaker and easier to bypass.
-- Consequence: future boundary regressions fail in lint before review.
+---
 
 ## Spec + proof
 
@@ -162,20 +203,43 @@ ready state:
 
 ### Properties
 <!-- AUTHOR: human -->
-- **P1**
-  - Invariant: structural: `page.tsx` never imports query hooks or API modules.
-  - Enforcement: static
-  - Why: this is a source-shape rule; lint is stronger than a runtime test.
-  - Evidence: eslint rule in `web/eslint/slice-boundaries.js` + `pnpm lint`.
-- **P2**
-  - Invariant: preservation: ready page tab switching remains local UI state.
-  - Enforcement: runtime
-  - Why: user-visible behavior still needs render proof.
-  - Evidence: page test for default tab and switched tab.
+
+> [!NOTE] **P1** — `static` — `human`
+> **Invariant:** structural: `page.tsx` never imports query hooks or API modules.
+> **Evidence:** eslint rule in `web/eslint/slice-boundaries.js` + `pnpm lint`.
+
+- **P2** — `runtime` — `human`
+  Invariant: preservation: ready page tab switching remains local UI state.
+  Evidence: page test for default tab and switched tab.
 
 <!-- TRUST BOUNDARY - reviewer stops here -->
 
 ## Agent instructions
+
+### Implementation strategy
+
+1. `web/eslint/slice-boundaries.js` - enforce D1 before touching the page.
+
+   Current touch point:
+
+   ```javascript
+   web/eslint/slice-boundaries.js::rules["page-boundary"](context) -> RuleListener
+   ```
+
+   ```javascript
+   if (isRoutedPage(filename) && importsQueryLayer(source)) {
+     context.report(...)
+   }
+   ```
+
+2. `web/src/slices/match-details/page.tsx` - keep page logic view-only.
+
+   Current local shape:
+
+   ```tsx
+   const [activeTab, setActiveTab] = useState("summary")
+   return <ReadyView activeTab={activeTab} onTabChange={setActiveTab} />
+   ```
 
 ### Verification evidence
 

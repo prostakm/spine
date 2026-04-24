@@ -47,7 +47,7 @@ allows explicit validator runs.
 After creating plan.md:
 
 > "Plan at `.spine/features/{slug}/plan.md`.
-> Start with `Changed code surface` and top `Risk`.
+> Start with `Changed Surface` and top `Risk`.
 > Then review `Decisions`, `Spec + proof`, and `Contracts`.
 > Stop at the trust boundary.
 > Focus comments on chosen approach, proof cases, and missing risk.

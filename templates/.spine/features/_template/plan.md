@@ -10,28 +10,47 @@
      strategy.
      Spec-derived fields carry forward approved spec facts for plan
      self-sufficiency. Reviewer skims for accuracy, does not re-approve.
-     Criticality tags (use sparingly — only when the tag adds real signal):
-       ⚠️  volatile: data loss, money errors, corruption, silent wrong results
-       🔒  locks in: constrains future architecture or behavior
-       🛡️  security: auth, permissions, PII, attack surface
-       👁️  UX-critical: directly affects what users see or experience
-     Append to decision headings, properties, rules, or edge cases.
-     Most items get no tag. -->
+     Criticality tags map to callout boxes (use sparingly):
+       > [!CAUTION]   volatile: data loss, money errors, corruption, silent wrong results
+       > [!WARNING]   UX-critical: directly affects what users see or experience
+       > [!IMPORTANT] locks in: constrains future architecture or behavior
+       > [!TIP]       default / no tag
+     Most decisions get no tag and render as a plain heading.
+     -->
 
-## Changed code surface
+## Changed Surface
+
+Keep this as a compact review map. Prefer a fenced `text` tree with short
+reasons over prose bullets or callout walls.
 
 ```text
-{path}                                                   [M] {why this matters to review}
-{path}                                                   [M] {why this matters to review}
+app/
+├── feature/
+│   └── module.py                      [M] why this file matters to review
+└── tests/
+    └── test_module.py                 [C] proof for D1 / P1
 ```
 
 ## Context
+
+<!-- Keep this to 4-6 bullets. Carry approved spec facts forward, but do not
+     restate the whole spec. When the before/after shape matters, add one
+     small ascii schematic instead of a paragraph. -->
+
 - Spec: `.spine/features/{slug}/spec.md` (approved)
 - Goal: {user-facing outcome in one line}
-- Current gap: {what is wrong or outdated now}
-- Scope: {what changes and what stays out}
-- Hard constraints: {unsupported data, API limits, arch boundary, etc.}
-- Review-critical fact: {only if the reviewer needs one more fact to judge risk}
+- Gap: {what is wrong or outdated now}
+- In: {what changes in this slice}
+- Out: {what stays unchanged or deferred}
+- Constraints: {hard limits, unsupported data, arch boundary, etc.}
+- Risk driver: {only if the reviewer needs one more fact to judge risk}
+
+### Current -> target (optional)
+
+```text
+today: {request-time joins / Python aggregation / controller branching / etc.}
+after: {materialized views / typed mapping / static rule / etc.}
+```
 
 **Status:** DRAFT | REVIEW | ANNOTATED | APPROVED
 **Scope:** {from spec — what changes, for whom}
@@ -48,10 +67,11 @@
 - Risk: {risk} -> {mitigation}
 
 <!-- Include only real forks. Constraints/conventions are not decisions unless
-     a competing option was considered. Prefer Chose/Over/Consequence. If a
-     property is structural, prefer static enforcement to tests. -->
+     a competing option was considered. Prefer Chose/Over/Consequence.
+     Criticality tags are optional. Use a callout only when the tag adds signal.
+     -->
 
-### D1: {decision title} {⚠️|🔒|🛡️|👁️}
+### D1: {decision title}
 
 - Chose: {what}
 - Over: {alt} - {why not}
@@ -59,9 +79,17 @@
 
 > ANNOTATION:
 
-<!-- Repeat D2, D3... Max 7. If more, split the feature.
-     Criticality tags are optional. Append ⚠️ 🔒 🛡️ 👁️ to the heading
-     when the reason matters. Most decisions get no tag. -->
+<!-- For tagged decisions, replace the heading with a callout:
+
+     > [!CAUTION] D1: {title}
+     > - **Chose:** {what}
+     > - **Over:** {alt} — {why not}
+     > - **Consequence:** {what this commits to}
+
+     Use > [!WARNING] for UX-critical, > [!IMPORTANT] for locks-in.
+     Most decisions stay as plain ### headings. -->
+
+<!-- Repeat D2, D3... Max 7. If more, split the feature. -->
 
 ---
 
@@ -91,18 +119,18 @@ then:
 
 ### Properties
 <!-- AUTHOR: human | human-validated | agent-proposed
-     Enforcement: static | runtime | manual.
-     Append ⚠️ 🔒 🛡️ 👁️ after the invariant when the reason matters. -->
-- **P1**
-  - Invariant: {category}: {what must hold} {⚠️|🔒|🛡️|👁️}
-  - Enforcement: {static | runtime | manual}
-  - Why: {why this proof mode is the right one}
-  - Evidence: {rule/script/test/manual check that proves it}
-- **P2**
-  - Invariant: {category}: {what must hold}
-  - Enforcement: {static | runtime | manual}
-  - Why: {why this proof mode is the right one}
-  - Evidence: {rule/script/test/manual check that proves it}
+     Triage by review importance. Use callouts only for the few properties
+     that actually drive risk. Lower-priority properties can be plain bullets.
+     Enforcement mode is a tag on the header, not a separate field.
+     Invariant + Evidence only. No "Why" field. -->
+
+> [!CAUTION] **P1** — `runtime` — `human`
+> **Invariant:** range: {what must hold}
+> **Evidence:** {rule/script/test/manual check that proves it}
+
+- **P2** — `static` — `agent-proposed`
+  Invariant: structural: {what must hold}
+  Evidence: {rule/script/test/manual check that proves it}
 
 ### Snapshot anchors
 
@@ -114,12 +142,11 @@ then:
 
 ### Code sketch (optional)
 
-```typescript
-function {name}({args}): {returnType} {
-  // ...obvious setup...
-  {decisionCarryingLine}
-  // ...obvious wiring...
-}
+```python
+def {name}({args}) -> {returnType}:
+    # ...obvious setup...
+    {decisionCarryingLine}  # D1
+    # ...obvious wiring...
 ```
 
 ### Arch boundaries schematic (optional)
@@ -167,12 +194,16 @@ query loads
 - If any assertion changes -> escalate.
 
 ### Properties
-<!-- AUTHOR: human | human-validated | agent-proposed -->
-- **P1**
-  - Invariant: preservation: {identical before and after}
-  - Enforcement: {static | runtime | manual}
-  - Why: {why this proof mode is the right one}
-  - Evidence: {rule/script/test/manual check that proves it}
+<!-- Use callouts only for highest-risk properties. Lower-priority properties
+     can be plain bullets with the same `Invariant` / `Evidence` fields. -->
+
+> [!NOTE] **P1** — `runtime` — `human`
+> **Invariant:** preservation: {identical before and after}
+> **Evidence:** {rule/script/test/manual check that proves it}
+
+- **P2** — `runtime` — `agent-proposed`
+  Invariant: stability: {what remains deterministic or idempotent}
+  Evidence: {rule/script/test/manual check that proves it}
 
 ### Delta (perf only)
 
@@ -212,12 +243,16 @@ multiple layers or have branching paths.
 - {wiring proof}
 
 ### Properties
-<!-- AUTHOR: human | human-validated | agent-proposed -->
-- **P1**
-  - Invariant: structural: {architecture invariant}
-  - Enforcement: {static | runtime | manual}
-  - Why: {prefer static enforcement when the invariant is source-shaped}
-  - Evidence: {rule/script/test/manual check that proves it}
+<!-- Use callouts only for highest-risk properties. Lower-priority properties
+     can be plain bullets with the same `Invariant` / `Evidence` fields. -->
+
+> [!NOTE] **P1** — `static` — `human`
+> **Invariant:** structural: {architecture invariant}
+> **Evidence:** {rule/script/test/manual check that proves it}
+
+- **P2** — `runtime` — `agent-proposed`
+  Invariant: preservation: {boundary behavior that must stay true}
+  Evidence: {rule/script/test/manual check that proves it}
 
 <!-- REGRESSION -->
 
@@ -237,12 +272,16 @@ multiple layers or have branching paths.
 - {property this bug reveals}
 
 ### Properties
-<!-- AUTHOR: human | human-validated | agent-proposed -->
-- **P1**
-  - Invariant: {category}: {the violated invariant, now a property}
-  - Enforcement: {static | runtime | manual}
-  - Why: {why this proof mode is the right one}
-  - Evidence: {rule/script/test/manual check that proves it}
+<!-- Use callouts only for highest-risk properties. Lower-priority properties
+     can be plain bullets with the same `Invariant` / `Evidence` fields. -->
+
+> [!CAUTION] **P1** — `runtime` — `human`
+> **Invariant:** {category}: {the violated invariant, now a property}
+> **Evidence:** {rule/script/test/manual check that proves it}
+
+- **P2** — `runtime` — `agent-proposed`
+  Invariant: regression: {secondary behavior that must remain fixed}
+  Evidence: {rule/script/test/manual check that proves it}
 
 ## Contracts
 
@@ -279,35 +318,9 @@ multiple layers or have branching paths.
 
 ## Agent instructions
 
-### Codebase packet
-
-This section makes the plan executable without broad re-reading.
-
-#### Current signatures
-
-```typescript
-{path}::{symbol}({args}) -> {return}
-{path}::{symbol}({args}) -> {return}
-```
-
-#### Local snippets
-
-```typescript
-{path}::{symbol}
-  ...{existing nearby logic}...
-  {decision-carrying line}
-  ...
-```
-
-#### Test hooks and fixtures
-
-- `{helper}` in `{path}` - {what existing fixture/helper already does}
-- `{helper}` in `{path}` - {what existing fixture/helper already does}
-
-#### Generated/runtime names
-
-- `{exact schema/type/export name}` in `{path}` - {why it matters}
-- `{exact route/query key/test name}` - {why it matters}
+<!-- All fenced code blocks in this section MUST use a language tag
+     that matches the code content (python, typescript, rust, bash, yaml).
+     Use text ONLY for plain diagrams (trees, flowcharts). -->
 
 ### Verification evidence
 
@@ -331,7 +344,7 @@ This section defines the bounded packet for the context-minimized verifier.
 - Outputs: `{pass/fail summary, generated-case counts where applicable}`
 - Runtime mutation candidates to assess:
   `{bound flips, removed guards, constant return, skipped normalization,
-  bypassed branch/auth}`
+   bypassed branch/auth}`
 - Static-proof gaps to assess:
   `{rule bypasses, files outside rule scope, formatter/lint blind spots}`
 
@@ -357,24 +370,59 @@ change descriptions to one line.
 
 <!-- Steps reference decisions by number. Phase if natural stages
      exist, flat if not. Each phase names its target file(s).
+     Fold current-state facts into the relevant step instead of using a
+     separate execution/codebase packet.
      For runtime tests: include framework, arbitraries, mock setup, and
      assertions inline — no separate Test implementation notes.
      Prefer near-real code in the repo language. Sketch only the non-obvious
-     lines. Show only the correct approach, no "NOT THIS / THIS" narratives.
+     lines. For query-heavy work, show the real select/join/filter/group/order
+     shape instead of `SELECT ...` placeholders. Show only the correct
+     approach, no "NOT THIS / THIS" narratives.
      After rule/script/test implementation, run the context-minimized verifier
      against the extracted proof packet before moving to review. -->
 
 1. `{path or symbol}` - {step referencing D1}
 
+   Current touch point:
+
    ```typescript
-   {near-real code sketch for the non-trivial part}
+   {path}::{symbol}({args}) -> {return}
    ```
+
+   Current local shape:
+
+   ```typescript
+   {path}::{symbol}
+     ...{existing nearby logic}...
+     {decision-carrying line}  # D1
+     ...
+   ```
+
+    ```python
+    stmt = (
+        select(...)
+        .join(...)
+        .where(...)
+        .group_by(...)
+        .order_by(...)
+    )
+    rows = (await session.execute(stmt)).mappings().all()
+    return [{field: row[field]} for row in rows]
+    ```
 
 2. `{path or symbol}` - {step referencing D2}
 
-   ```typescript
-   {near-real code sketch for the non-trivial part}
-   ```
+   Existing proof hooks:
+
+   - `{helper}` in `{path}` - {what existing fixture/helper already does}
+   - `{helper}` in `{path}` - {what existing fixture/helper already does}
+
+    ```python
+    def test_{behavior}(...):
+        seed_{fixture}(...)
+        {refresh_or_execute}(...)
+        assert {observable} == {expected}
+    ```
 
 ### Acceptance gate
 
@@ -423,3 +471,5 @@ change descriptions to one line.
 ## State
 - Phase: planning
 - Verification Gate: pending
+
+(End of file)

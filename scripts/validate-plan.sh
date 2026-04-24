@@ -87,8 +87,10 @@ if ! grep -qE '^\*\*Scope:\*\*' "$PLAN"; then
     errors=$((errors + 1))
 fi
 
-if ! grep -qE '^## Changed code surface$' "$PLAN"; then
-    echo "NOTE: Missing ## Changed code surface section" >&2
+if ! grep -qE '^## Changed Surface$' "$PLAN" && \
+   ! grep -qE '^## Changed code surface$' "$PLAN" && \
+   ! grep -qE '^> \[!NOTE\] Changed Surface' "$PLAN"; then
+    echo "NOTE: Missing changed-surface overview (prefer ## Changed Surface)" >&2
 fi
 
 if ! grep -qE '^\*\*Strategy:\*\*' "$PLAN"; then
@@ -131,21 +133,6 @@ if ! grep -qE '^#### Test evidence to collect' "$PLAN"; then
     errors=$((errors + 1))
 fi
 
-if ! grep -qE '^### Codebase packet' "$PLAN"; then
-    echo "Missing ### Codebase packet in Agent instructions" >&2
-    errors=$((errors + 1))
-fi
-
-if ! grep -qE '^#### Current signatures' "$PLAN"; then
-    echo "Missing #### Current signatures in Codebase packet" >&2
-    errors=$((errors + 1))
-fi
-
-if ! grep -qE '^#### Test hooks and fixtures' "$PLAN"; then
-    echo "Missing #### Test hooks and fixtures in Codebase packet" >&2
-    errors=$((errors + 1))
-fi
-
 if ! grep -qE '^### Properties' "$PLAN"; then
     echo "Missing ### Properties subsection in Spec + proof" >&2
     errors=$((errors + 1))
@@ -168,7 +155,21 @@ if grep -qE '^### Properties' "$PLAN"; then
         /^### Properties$/ { in_props = 1; next }
         in_props && /^### / { exit }
         in_props && /^## / { exit }
-        in_props && /^[[:space:]]*-[[:space:]]+Invariant:/ { found = 1; exit }
+        in_props && (/^> \[!.*\*\*P[0-9]+/ || /^[[:space:]]*-[[:space:]]*\*\*P[0-9]+\*\*/) {
+            found = 1
+            exit
+        }
+        END { exit(found ? 0 : 1) }
+    ' "$PLAN"; then
+        echo "Properties section missing property IDs (e.g. > [!NOTE] **P1** or - **P1**)" >&2
+        errors=$((errors + 1))
+    fi
+
+    if ! awk '
+        /^### Properties$/ { in_props = 1; next }
+        in_props && /^### / { exit }
+        in_props && /^## / { exit }
+        in_props && /Invariant:/ { found = 1; exit }
         END { exit(found ? 0 : 1) }
     ' "$PLAN"; then
         echo "Properties section missing Invariant label" >&2
@@ -179,29 +180,7 @@ if grep -qE '^### Properties' "$PLAN"; then
         /^### Properties$/ { in_props = 1; next }
         in_props && /^### / { exit }
         in_props && /^## / { exit }
-        in_props && /^[[:space:]]*-[[:space:]]+Enforcement:/ { found = 1; exit }
-        END { exit(found ? 0 : 1) }
-    ' "$PLAN"; then
-        echo "Properties section missing Enforcement label" >&2
-        errors=$((errors + 1))
-    fi
-
-    if ! awk '
-        /^### Properties$/ { in_props = 1; next }
-        in_props && /^### / { exit }
-        in_props && /^## / { exit }
-        in_props && /^[[:space:]]*-[[:space:]]+Why:/ { found = 1; exit }
-        END { exit(found ? 0 : 1) }
-    ' "$PLAN"; then
-        echo "Properties section missing Why label" >&2
-        errors=$((errors + 1))
-    fi
-
-    if ! awk '
-        /^### Properties$/ { in_props = 1; next }
-        in_props && /^### / { exit }
-        in_props && /^## / { exit }
-        in_props && /^[[:space:]]*-[[:space:]]+Evidence:/ { found = 1; exit }
+        in_props && /Evidence:/ { found = 1; exit }
         END { exit(found ? 0 : 1) }
     ' "$PLAN"; then
         echo "Properties section missing Evidence label" >&2

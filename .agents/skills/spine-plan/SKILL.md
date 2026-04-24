@@ -35,32 +35,33 @@ The plan has two zones separated by a trust boundary:
 
 Above the trust boundary (human reviews):
 
-- **Changed code surface**: first review surface. List only touched product
-  code and tests that matter for approval. Exclude `.spine/` bookkeeping files
-  unless the feature itself changes Spine.
-- **Context**: compact BLUF only. Focus on user goal, current gap, scope, and
-  hard constraints the reviewer needs to judge the approach. Do not make the
-  reviewer re-read broad project context or planner process notes.
+- **Changed Surface**: first review surface. Render as a compact fenced
+  `text` tree with one short reason per touched file. Keep it neotree-like:
+  directories first, `[M]` / `[C]` / `[D]` status markers, no prose wall.
+  List only touched product code and tests that matter for approval.
+  Exclude `.spine/` bookkeeping unless the feature changes Spine.
+- **Context**: compact BLUF only. Focus on user goal, current gap, scope,
+  and hard constraints the reviewer needs to judge the approach.
+  Do not make the reviewer re-read broad project context or planner notes.
 - **Risk**: top-level, explicit, and brief. If risk drives review depth, say so.
-- **Decisions**: only real forks. Constraints, conventions, or architecture
-  rules are not decisions unless a competing option was considered. Default
-  format: Chose / Over / Consequence. Keep it to what the reviewer is actually
-  approving.
+- **Decisions**: only real forks. Use callout boxes for tagged decisions
+  (`> [!CAUTION]`, `> [!WARNING]`, `> [!IMPORTANT]`); plain `###` headings
+  for untagged ones. Format: Chose / Over / Consequence.
 - **Spec + proof**: strategy-adaptive section. Use plain acceptance cases,
-  compact structured examples, and strict properties. Prefer reviewer-readable
-  proof artifacts over symbolic notation.
-- **Properties**: present in every strategy block. Each property must say what
-  must hold, how it will be enforced, why that enforcement is appropriate, and
-  what evidence proves it.
+  compact structured examples, and strict properties.
+  Prefer reviewer-readable proof artifacts over symbolic notation.
+- **Properties**: present in every strategy block. Triage by review risk:
+  use callouts only for the few properties that deserve visual emphasis;
+  render the rest as plain bullets. Every property still has exactly two
+  fields: **Invariant** (what must hold) and **Evidence** (what proves it).
+  Enforcement mode and author are tags on the property header, not separate
+  fields. No "Why" prose.
 - **Contracts**: input/output types crossing boundaries. Use language-tagged
-  fences that match the content (`typescript` when the content is TS-like).
-  Include only the contracts that clarify review.
+  fences that match the content (`typescript` for TS-like, `python` for Py).
+  Include only contracts that clarify review.
 
 Below the trust boundary (agent executes, proofs verify):
 
-- **Codebase packet**: exact current signatures, focused snippets,
-  test hooks/fixtures, generated names, and other current-state facts needed
-  to edit safely. This is the anti-research packet for implementation.
 - **Verification evidence**: bounded verifier packet plus the concrete runtime
   or static evidence the executor must collect.
 - **File tree**: secondary execution overview. Neotree-style tree of touched
@@ -69,10 +70,14 @@ Below the trust boundary (agent executes, proofs verify):
 - **Implementation strategy**: steps referencing decisions by number.
   Phase if natural stages exist, flat if not. For every non-trivial step,
   include a near-real code sketch in the repo language; use pseudocode only
-  when no concrete syntax is possible.
+  when no concrete syntax is possible. For SQL/query-heavy work, show the
+  actual query shape: selected fields, joins, filters, grouping, ordering.
+  Fold current-state facts into the relevant step: exact touch-point
+  signatures, local snippets, and existing proof hooks belong inline where
+  they are used, not in a separate packet.
 - **Acceptance gate**: references Properties by number. Validation command
-  is the first checkbox. Use lint/type/script checks when a property is enforced
-  statically; use runtime tests only for runtime behavior.
+  is the first checkbox. Use lint/type/script checks when a property is
+  enforced statically; use runtime tests only for runtime behavior.
 - The agent section must be executable from the plan alone. If an
   implementation detail would otherwise require reopening the codebase,
   spell it out here.
@@ -91,9 +96,9 @@ Carry-forward (reviewer skims, does not re-approve):
 - Spec Acceptance Criteria → plan Acceptance gate (delegated, not restated)
 
 Enrichment (reviewer deep-reads - this is the plan's unique value):
-- Actual touched files → plan Changed code surface
+- Actual touched files → plan Changed Surface
 - Spec Requirements → plan Rules as plain acceptance cases
-- Spec Invariants → plan Properties with proof framing + enforcement markers
+- Spec Invariants → plan Properties with proof framing + enforcement tags
 - Spec Boundaries → plan Decisions with Chose/Over/Consequence tradeoffs
 - New review-relevant technical context → fold into compact plan Context
 - Verifier contract → plan Verification evidence + Verification Gate skeleton
@@ -115,10 +120,10 @@ everything from scratch. Reviewer treats all context as new.
   for safe edits, the plan is missing context; patch the plan instead of
   normalizing ad hoc exploration
 - Prefer exact facts over summaries:
-  - current function/component signatures
-  - existing helper names and test fixtures
-  - short local snippets around touched logic
-  - exact generated schema/type/export names
+  - current function/component signatures inline with the step that edits them
+  - existing helper names and test fixtures inline with the step that uses them
+  - short local snippets around touched logic inline with the relevant step
+  - exact generated schema/type/export names when they affect the step
   - exact commands for verify/build/test
 
 ## Strategy-specific proof content
@@ -147,7 +152,7 @@ everything from scratch. Reviewer treats all context as new.
 ### STRUCTURAL
 - Architecture constraints (import rules, permission checks)
 - Boundary behavior: endpoint shorthand grouped by endpoint
-  ```
+  ```text
   GET /path:
     condition → status + shape
     condition → status
@@ -210,12 +215,13 @@ When writing the plan:
 2. Classify each by category: range | relational | stability |
    preservation | structural
 3. Choose the enforcement mode first: static | runtime | manual
-4. Write properties in plain English with input domain descriptions
-   and strict labels:
-   - `Invariant`
-   - `Enforcement`
-   - `Why`
-   - `Evidence`
+4. Write properties with exactly two fields:
+   - `Invariant`: category + what must hold (plain English)
+   - `Evidence`: the test, rule, script, or check that proves it
+   Use callouts only for the most review-critical properties:
+   `> [!{CALLOUT}] **P{N}** — {enforcement} — {author}`
+   Lower-priority properties can be plain bullets:
+   `- **P{N}** — {enforcement} — {author}`
 5. Properties go ABOVE the trust boundary — they are review artifacts
 6. Test details (below trust boundary, inline in Implementation strategy)
    specify the framework and generation strategies only for runtime-enforced
@@ -291,8 +297,8 @@ If the plan reveals the feature is too large or covers multiple concerns:
 - Start with changed code surface, then compact context. Reviewers should not
   need to dig for the real change surface.
 - Delete unused strategy blocks from spec+proof — don't leave empty sections
-- Every property needs an AUTHOR marker and the labels Invariant / Enforcement /
-  Why / Evidence
+- Every property needs a `P{N}` ID plus the labels Invariant / Evidence
+  (Enforcement is a tag on the property header, not a field)
 - Above trust boundary: optimize for review speed and signal
 - Below trust boundary: optimize for implementation accuracy
 - Below trust boundary: copy facts, not references, when those facts are
@@ -300,21 +306,30 @@ If the plan reveals the feature is too large or covers multiple concerns:
 - Below trust boundary: define verification packet fields explicitly so the
   verifier never needs the full plan
 - File paths, symbols, commands in backticks
+- Use `## Changed Surface` as a compact tree, not a callout list
+- All fenced code blocks MUST use a language tag matching the content.
+  Use `text` ONLY for plain diagrams (trees, flowcharts). Never use
+  bare triple-backticks or `text` for code sketches.
 
 ### Notation choices
 - Data/control flow: `a → b → c` (inline, one line)
 - Acceptance cases: `- When {condition}, {observable}`
-- Domain invariants: strict labeled property bullets
+- Domain invariants: callout boxes for critical properties, bullets for the rest
+  — always with `Invariant` + `Evidence` fields
 - Endpoint behavior: grouped by endpoint, one line per case
 - Data shapes: colon-aligned `name: type  # constraint`
 - Alternatives: Chose/Over/Consequence (not prose paragraphs)
 - Side effects: `⚠` marker prefix
-- Criticality tags: `⚠️` volatile, `🔒` locks future, `🛡️` security,
-  `👁️` UX-critical. Append to decision headings, properties, rules,
-  or edge cases. Use sparingly — most items get no tag.
+- Criticality tags → callout mapping (use sparingly):
+  - `⚠️` volatile  → `> [!CAUTION]`
+  - `🔒` locks-in   → `> [!IMPORTANT]`
+  - `🛡️` security   → `> [!WARNING]` (or `> [!CAUTION]` if severe)
+  - `👁️` UX-critical → `> [!WARNING]`
+  - no tag          → plain `###` heading (or `> [!TIP]` if you really want a box)
 - Branching (2-3 paths): aligned cases or a fenced flow diagram
+- Changed Surface: fenced `text` tree above the trust boundary
 - File tree: neotree-style `▾`/`●` with `[M]`/`[C]`/`[D]` markers in the
-  agent zone; keep the first overview as changed code surface
+  agent zone
 - Metadata: key-value pairs, not tables
 
 ### When to use diagrams
