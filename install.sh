@@ -43,19 +43,10 @@ copy_if_missing() {
 
 sync_managed_file() {
     local src="$1" dst="$2"
-    [ -f "$src" ] || return 0
+    [ -f "$src" ] || error "Missing managed source: $src"
     mkdir -p "$(dirname "$dst")"
-
-    if [ ! -f "$dst" ]; then
-        cp "$src" "$dst"
-        info "Created managed file: $dst"
-        return
-    fi
-
-    if ! cmp -s "$src" "$dst"; then
-        cp "$src" "$dst"
-        info "Updated managed file: $dst"
-    fi
+    cp "$src" "$dst"
+    info "Replaced managed file: $dst"
 }
 
 remove_if_exists() {
@@ -583,7 +574,6 @@ chmod +x ".spine/scripts/cleanup-features.sh" 2>/dev/null || true
 # Reference docs used by Spine skills
 mkdir -p "docs"
 sync_managed_file "$SCRIPT_DIR/docs/EXAMPLE-PLAN.md" "docs/EXAMPLE-PLAN.md"
-sync_managed_file "$SCRIPT_DIR/docs/EXAMPLE-PLAN-LEGACY.md" "docs/EXAMPLE-PLAN-LEGACY.md"
 
 # ── Step 2: Copy Codex config.toml (merge if exists) ──
 SPINE_CONFIG_BLOCK_BEGIN="# BEGIN PROJECT SPINE CONFIG"
@@ -767,7 +757,7 @@ echo "    .spine/conventions.md      ← Edit: add your coding conventions"
 echo "    .spine/progress.md         ← Auto-updated as features complete"
 echo "    .spine/config.yaml         ← Set autonomy: low|med|high"
 echo "    .spine/features/_template/ ← Spec, plan, and findings/log templates (tree-first review, inline impl context)"
-echo "    docs/EXAMPLE-PLAN*.md      ← Managed example plans referenced by Spine skills"
+echo "    docs/EXAMPLE-PLAN.md       ← Managed v15 example plan referenced by Spine skills"
 echo "    .codex/config.toml         ← Main-session Codex defaults"
 echo "    .codex/hooks.json          ← Codex hook configuration"
 echo "    .codex/hooks/              ← SessionStart and Stop hooks"

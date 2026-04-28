@@ -31,58 +31,83 @@ All others verify preservation of existing behavior.
 
 ## Plan structure
 
-The plan has two zones separated by a trust boundary:
+The plan has two zones separated by a trust boundary.
 
-Above the trust boundary (human reviews):
+**Above the boundary (reviewer reads top-down):**
 
-- **Changed Surface**: first review surface. Render as a compact fenced
-  `text` tree with one short reason per touched file. Keep it neotree-like:
-  directories first, `[M]` / `[C]` / `[D]` status markers, no prose wall.
-  List only touched product code and tests that matter for approval.
-  Exclude `.spine/` bookkeeping unless the feature changes Spine.
-- **Context**: compact BLUF only. Focus on user goal, current gap, scope,
-  and hard constraints the reviewer needs to judge the approach.
-  Do not make the reviewer re-read broad project context or planner notes.
-- **Risk**: top-level, explicit, and brief. If risk drives review depth, say so.
-- **Decisions**: only real forks. Use callout boxes for tagged decisions
-  (`> [!CAUTION]`, `> [!WARNING]`, `> [!IMPORTANT]`); plain `###` headings
-  for untagged ones. Format: Chose / Over / Consequence.
-- **Spec + proof**: strategy-adaptive section. Use plain acceptance cases,
-  compact structured examples, and strict properties.
-  Prefer reviewer-readable proof artifacts over symbolic notation.
-- **Properties**: present in every strategy block. Triage by review risk:
-  use callouts only for the few properties that deserve visual emphasis;
-  render the rest as plain bullets. Every property still has exactly two
-  fields: **Invariant** (what must hold) and **Evidence** (what proves it).
-  Enforcement mode and author are tags on the property header, not separate
-  fields. No "Why" prose.
-- **Contracts**: input/output types crossing boundaries. Use language-tagged
-  fences that match the content (`typescript` for TS-like, `python` for Py).
-  Include only contracts that clarify review.
+- **Overview**: system-flow diagram (caveman boxes, one short sentence per
+  box, no provision IDs) + file map (tree-style with `[M]/[C]/[D]` markers).
+- **Context**: 6 lines max — Goal / Gap / In / Out / Constraints / Spec link.
+- **Chapters**: each chapter is a coherent review unit. Per chapter:
+  - **Why grouped** (1–3 prose sentences) — argues why this is one unit.
+  - **What changes** (1–2 sentences) — system-level summary.
+  - **Decisions**: real forks only. Format: Chose / Over / Consequence.
+    Use callouts (`> [!CAUTION/WARNING/IMPORTANT]`) sparingly.
+  - **Provisions**: chapter-scoped formal claims, in this order:
+    *Properties*, *Rules / fixtures*, *Boundary behavior*, *Edge cases*.
+    Skip subsections that don't apply.
+- **Contracts**: only when boundaries change. Inputs/outputs as code blocks.
 
-Below the trust boundary (agent executes, proofs verify):
+**Below the boundary (agent executes):**
 
-- **Verification evidence**: bounded verifier packet plus the concrete runtime
-  or static evidence the executor must collect.
-- **File tree**: secondary execution overview. Neotree-style tree of touched
-  files with `[M]`/`[C]`/`[D]` markers. Collapse non-scoped siblings with
-  `(...)`. One-line change descriptions per file.
-- **Implementation strategy**: steps referencing decisions by number.
-  Phase if natural stages exist, flat if not. For every non-trivial step,
-  include a near-real code sketch in the repo language; use pseudocode only
-  when no concrete syntax is possible. For SQL/query-heavy work, show the
-  actual query shape: selected fields, joins, filters, grouping, ordering.
-  Fold current-state facts into the relevant step: exact touch-point
-  signatures, local snippets, and existing proof hooks belong inline where
-  they are used, not in a separate packet.
-- **Acceptance gate**: references Properties by number. Validation command
-  is the first checkbox. Use lint/type/script checks when a property is
-  enforced statically; use runtime tests only for runtime behavior.
-- The agent section must be executable from the plan alone. If an
-  implementation detail would otherwise require reopening the codebase,
-  spell it out here.
-- **Resume**: keep it near the bottom so fresh sessions can recover with a
-  quick tail read.
+- **Implementation tracks**: each track is independently verifiable.
+  Per track:
+  - **Depends on**: prior tracks or none.
+  - **Constraints**: imperative directives in caveman form (extracted from
+    decisions).
+  - **Code**: modifications as full `diff` snippets with file/line location
+    in the `####` heading and hunk header. Include enough unchanged context
+    for safe placement. New files use plain language-tagged blocks. Each code
+    block lives under a `####` heading.
+  - **Tests**: each test under a `####` heading; body is `In:` / `Assert:`
+    bullets in caveman form. No code stubs, no parametrize blocks spelled
+    out.
+  - **Verify**: bash commands.
+  - **Green when**: criteria referencing test names from above.
+- **Verification evidence**: verifier packet + mutation candidates +
+  static-proof gaps.
+- **Verification Gate / Review Gate / State / Resume**: hook-readable
+  blocks. DO NOT change their format.
+- **Acceptance gate**: checklist of track green-criteria + cross-cutting
+  checks.
+
+## Anchors and navigation
+
+Every code block and test spec gets a `####` heading. Cross-links use
+`[label](#slug)` where slug is computed from the heading by:
+
+1. lowercase
+2. drop punctuation (dot, comma, colon, quotes, brackets, `*`, `~`, backtick, etc.; keep `_`)
+3. drop slashes
+4. replace runs of whitespace with single `-`
+
+Examples:
+- `#### Modify payroll/calculator.py lines 42-88` →
+  `#modify-payrollcalculatorpy-lines-42-88`
+- `#### \`test_total_withholding_never_negative\`` →
+  `#test_total_withholding_never_negative`
+
+Slugs match GitHub and marksman (nvim) — same anchor works in PR review and
+in editor `gd` navigation.
+
+## Test specs
+
+Each test spec is a `####` heading + bullet body:
+
+```markdown
+#### `test_name`
+
+*Unit | Hypothesis property | Snapshot | Parametrized | Component | Hook*.
+Proves PX (and PY if multiple).
+
+- In: {input/setup, code-shaped where helpful}
+- Assert: {expectation, code-shaped where helpful}
+- Note: {optional, e.g. example count, snapshot path, slow marker}
+```
+
+Multiple assertions sub-bullet under Assert. Code-shape is preferred when
+clearer than prose: `result ≥ Money(0, "USD")` over "result is non-negative
+Money".
 
 ## Spec-to-plan derivation
 
@@ -96,7 +121,7 @@ Carry-forward (reviewer skims, does not re-approve):
 - Spec Acceptance Criteria → plan Acceptance gate (delegated, not restated)
 
 Enrichment (reviewer deep-reads - this is the plan's unique value):
-- Actual touched files → plan Changed Surface
+- Actual touched files → plan Overview file map
 - Spec Requirements → plan Rules as plain acceptance cases
 - Spec Invariants → plan Properties with proof framing + enforcement tags
 - Spec Boundaries → plan Decisions with Chose/Over/Consequence tradeoffs
@@ -223,7 +248,7 @@ When writing the plan:
    Lower-priority properties can be plain bullets:
    `- **P{N}** — {enforcement} — {author}`
 5. Properties go ABOVE the trust boundary — they are review artifacts
-6. Test details (below trust boundary, inline in Implementation strategy)
+6. Test details (below trust boundary, inline in Implementation tracks)
    specify the framework and generation strategies only for runtime-enforced
    properties
 7. Write properties so they can be copied verbatim into a verifier packet.
@@ -241,7 +266,7 @@ Every plan must define a context-minimized verifier packet below the trust
 boundary.
 
 - Purpose: let a fresh verifier judge proof strength without reading the full
-  plan or the implementation strategy
+  plan or the implementation tracks
 - Extract only from the approved proof artifacts above the trust boundary:
   active strategy, properties, and strategy-specific invariants
 - The executor adds bounded verification evidence separately: touched test or
@@ -289,76 +314,61 @@ If the plan reveals the feature is too large or covers multiple concerns:
 - **high**: decide with rationale. ASK only on conflicts.
 
 ## Style
-- Bullet points over paragraphs
-- Short statements, not sentences
-- First line of each section = its conclusion (BLUF)
-- Hard-wrap prose at 100 chars. Rewrite to fit; do not overflow.
-- Bold only the smallest crucial fragment. Never bold whole bullets.
-- Start with changed code surface, then compact context. Reviewers should not
-  need to dig for the real change surface.
-- Delete unused strategy blocks from spec+proof — don't leave empty sections
-- Every property needs a `P{N}` ID plus the labels Invariant / Evidence
-  (Enforcement is a tag on the property header, not a field)
-- Above trust boundary: optimize for review speed and signal
-- Below trust boundary: optimize for implementation accuracy
+- Caveman phrasing in lists. Sentence fragments over sentences.
+- Prose only for `Why grouped` and `What changes` — they argue, lists state.
+- Bullet points over paragraphs everywhere else.
+- No markdown tables. Use fenced `text` blocks if tabular data is needed.
+- Bold only the smallest crucial fragment.
+- Hard-wrap prose at 100 chars.
+- Code blocks: language-tagged. `text` only for plain diagrams (trees,
+  flowcharts). Modifications use full `diff` snippets with file/line location.
+- Above trust boundary: optimize for review speed and signal.
+- Below trust boundary: optimize for implementation accuracy.
 - Below trust boundary: copy facts, not references, when those facts are
-  required for safe edits
-- Below trust boundary: define verification packet fields explicitly so the
-  verifier never needs the full plan
-- File paths, symbols, commands in backticks
-- Use `## Changed Surface` as a compact tree, not a callout list
-- All fenced code blocks MUST use a language tag matching the content.
-  Use `text` ONLY for plain diagrams (trees, flowcharts). Never use
-  bare triple-backticks or `text` for code sketches.
+  required for safe edits.
+- File paths, symbols, commands in backticks.
+- Metadata: key-value pairs, not tables.
 
 ### Notation choices
-- Data/control flow: `a → b → c` (inline, one line)
-- Acceptance cases: `- When {condition}, {observable}`
-- Domain invariants: callout boxes for critical properties, bullets for the rest
-  — always with `Invariant` + `Evidence` fields
-- Endpoint behavior: grouped by endpoint, one line per case
-- Data shapes: colon-aligned `name: type  # constraint`
-- Alternatives: Chose/Over/Consequence (not prose paragraphs)
-- Side effects: `⚠` marker prefix
+- Data/control flow: `a → b → c` (inline, one line).
+- Rules / fixtures: `- When {condition}, {observable}`.
+- Provisions: Properties + Rules / fixtures + Boundary behavior + Edge cases.
+- Domain invariants: property bullets with `Invariant` + `Evidence` fields.
+- Endpoint behavior: grouped by endpoint, one line per case.
+- Data shapes: colon-aligned code blocks.
+- Alternatives: Chose/Over/Consequence (not prose paragraphs).
+- Side effects: `⚠` marker prefix.
 - Criticality tags → callout mapping (use sparingly):
   - `⚠️` volatile  → `> [!CAUTION]`
   - `🔒` locks-in   → `> [!IMPORTANT]`
   - `🛡️` security   → `> [!WARNING]` (or `> [!CAUTION]` if severe)
   - `👁️` UX-critical → `> [!WARNING]`
-  - no tag          → plain `###` heading (or `> [!TIP]` if you really want a box)
-- Branching (2-3 paths): aligned cases or a fenced flow diagram
-- Changed Surface: fenced `text` tree above the trust boundary
-- File tree: neotree-style `▾`/`●` with `[M]`/`[C]`/`[D]` markers in the
-  agent zone
-- Metadata: key-value pairs, not tables
+  - no tag          → plain decision paragraph or `> [!TIP]` if useful
+- Branching (2-3 paths): aligned cases or a fenced flow diagram.
+- File map: tree-style with `[M]`/`[C]`/`[D]` markers in Overview.
+- Implementation tracks: code changes as full unified-diff snippets with
+  file/line location; new files as full language-tagged blocks.
 
 ### When to use diagrams
-- Arch boundaries schematic: when the change touches multiple layers
-  and the reviewer needs to verify no arch violations. Shows locked
-  vs changed boundaries. Reference decisions and properties inline.
-- Control flow tree: when branching logic has >2 paths and fixture
-  arrows can't express the decision structure. Shows outcomes,
-  not variable names or code.
-- If fixture arrows + ALWAYS/NEVER properties cover the concept,
-  prefer those — diagrams are for the gap between them.
-- Both diagrams are human-zone artifacts. The agent zone's
-  Implementation strategy shows the correct code-level flow.
+- System flow: when touched files form >1 concern. One box per concern.
+- Arch boundaries schematic: when reviewer needs to verify no arch violations.
+- Control flow tree: when branching logic has >2 paths and fixture arrows
+  can't express the decision structure. Shows outcomes, not variable names.
+- If fixture arrows + ALWAYS/NEVER properties cover the concept, prefer those.
 - One diagram per concern, not per function.
 
 ### Diagram notation
 - Arch boundaries schematic: `───` locked, `───→` flow,
-  `← NEW` / `← UNCHANGED` annotations
-- Control flow tree: `├──` / `└──` branching, `───→` outcomes
-- Use `...` to elide obvious/framework logic in code sketches
-- Use `#` annotations for decision-carrying lines in code sketches
-- Use `GUARD:` for boundary conditions
-- Use `⚠` for side effects within sketches
+  `← NEW` / `← UNCHANGED` annotations.
+- Control flow tree: `├──` / `└──` branching, `───→` outcomes.
+- Use `...` to elide obvious/framework logic in code sketches.
+- Use `#` annotations for decision-carrying lines in code sketches.
+- Use `GUARD:` for boundary conditions.
+- Use `⚠` for side effects within sketches.
 
 ### Tables
-- Avoid tables in plans. Use acceptance bullets, endpoint shorthand,
-  key-value pairs, or indented trees instead.
-- Tables only when >4 columns are genuinely needed AND
-  all columns fit within 80 chars total.
-- No table in the plan should exceed 80 characters wide.
+- Avoid tables in plans.
+- If reviewer wants tabular data, use fenced `text` blocks.
+- Do not use markdown tables in chapter content.
 
 See `docs/EXAMPLE-PLAN.md` for the expected style.

@@ -1,0 +1,18 @@
+[
+  {"heading": "Modify payroll/calculator.py lines 42-88",
+   "slug":    "modify-payrollcalculatorpy-lines-42-88"},
+  {"heading": "New file payroll/selectors.py",
+   "slug":    "new-file-payrollselectorspy"},
+  {"heading": "Append to payroll/models.py",
+   "slug":    "append-to-payrollmodelspy"},
+  {"heading": "`test_total_withholding_never_negative`",
+   "slug":    "test_total_withholding_never_negative"},
+  {"heading": "Chapter 1: Allocation engine",
+   "slug":    "chapter-1-allocation-engine"},
+  {"heading": "Chapter 2: API surface",
+   "slug":    "chapter-2-api-surface"},
+  {"heading": "Track 1: Backend behind flag",
+   "slug":    "track-1-backend-behind-flag"},
+  {"heading": "Migration generation",
+   "slug":    "migration-generation"}
+]
