@@ -14,11 +14,103 @@ fi
 
 errors=0
 
-check_v15_anchors() {
-    local plan="$1"
-    local refs slugs unresolved
+# Common checks: apply to legacy and new formats.
+if ! grep -q "TRUST BOUNDARY" "$PLAN"; then
+    echo "Missing TRUST BOUNDARY marker" >&2
+    errors=$((errors + 1))
+fi
 
-    refs="$(grep -oE '\(#[a-z0-9_-]+\)' "$plan" | sed 's/^(#//; s/)$//' | sort -u || true)"
+for section in "Verification Gate" "Review Gate" "State" "Resume"; do
+    if ! grep -qE "^## ${section}$" "$PLAN"; then
+        echo "Missing hook section: ## ${section}" >&2
+        errors=$((errors + 1))
+    fi
+done
+
+if ! awk '/^## Verification Gate$/{f=1;next} /^## /{f=0} f && /Status:/{ok=1} END{exit(ok?0:1)}' "$PLAN"; then
+    echo "Verification Gate missing Status field" >&2
+    errors=$((errors + 1))
+fi
+
+# Max 7 decisions keeps review load bounded. Count unique D IDs.
+decision_count=$(grep -oE '\*\*D[0-9]+\*\*|\*\*D[0-9]+:' "$PLAN" | sed -E 's/[^D0-9]//g' | sort -u | wc -l || echo 0)
+decision_count="${decision_count:-0}"
+if [ "$decision_count" -gt 7 ]; then
+    echo "Too many decisions (${decision_count}); split or demote non-decisions" >&2
+    errors=$((errors + 1))
+fi
+
+if ! grep -qE '\[[MCD]\]' "$PLAN"; then
+    echo "NOTE: No file tree [M]/[C]/[D] markers found" >&2
+fi
+
+# Format detection.
+is_new_format=0
+is_legacy_format=0
+if grep -q '^## Behaviors' "$PLAN"; then
+    is_new_format=1
+elif grep -q '^## Spec + proof' "$PLAN" || grep -q '^## Chapters$' "$PLAN"; then
+    is_legacy_format=1
+fi
+
+if [ "$is_new_format" = "0" ] && [ "$is_legacy_format" = "0" ]; then
+    echo "Unknown plan format: expected ## Behaviors (new) or ## Chapters / ## Spec + proof (legacy)" >&2
+    errors=$((errors + 1))
+fi
+
+if [ "$is_new_format" = "1" ]; then
+    for section in "Status" "System view" "Behaviors" "Acceptance matrix" "Agent instructions"; do
+        if ! grep -qE "^## ${section}$" "$PLAN"; then
+            echo "New format: missing section ## ${section}" >&2
+            errors=$((errors + 1))
+        fi
+    done
+
+    if ! grep -qE '^- \*\*Strategy:\*\* (CORRECTNESS|EQUIVALENCE|STRUCTURAL|REGRESSION|\{)' "$PLAN"; then
+        echo "New format: missing or invalid strategy line" >&2
+        errors=$((errors + 1))
+    fi
+
+    # R7 (HARD): anchor reference resolution.
+    refs=$(grep -oE '\[I[0-9]+\]\(#i[0-9]+\)' "$PLAN" | grep -oE '#i[0-9]+' | sort -u || true)
+    for ref in $refs; do
+        anchor_id="${ref#\#}"
+        if ! grep -q "<a id=\"${anchor_id}\"" "$PLAN"; then
+            echo "Broken anchor reference: ${ref} has no matching <a id=\"${anchor_id}\">" >&2
+            errors=$((errors + 1))
+        fi
+    done
+
+    # R8 (HARD): no <details> below trust boundary.
+    boundary_line=$(grep -n 'TRUST BOUNDARY' "$PLAN" | head -1 | cut -d: -f1 || true)
+    if [ -n "$boundary_line" ]; then
+        if tail -n +"$boundary_line" "$PLAN" | grep -q '<details>'; then
+            echo "Found <details> below trust boundary — agent zone must stay flat" >&2
+            errors=$((errors + 1))
+        fi
+    fi
+
+    # Soft: at least one flow step.
+    if ! grep -qE '^### [A-Z]\.[0-9]' "$PLAN"; then
+        echo "NOTE: New-format plan has no flow steps (### A.1, ### B.1, …)" >&2
+    fi
+
+    # Soft: flow count ≤ 3.
+    flow_count=$(grep -oE '^### [A-Z]\.[0-9]' "$PLAN" | grep -oE '^### [A-Z]' | sort -u | wc -l || echo 0)
+    flow_count="${flow_count:-0}"
+    if [ "$flow_count" -gt 3 ]; then
+        echo "NOTE: ${flow_count} flows — consider splitting the feature" >&2
+    fi
+
+    # Soft: decision summary should start with chose:.
+    if grep -qE '^> \[!.*\] \*\*D[0-9]+' "$PLAN" || grep -qE '^- .*\*\*D[0-9]+\*\*' "$PLAN"; then
+        if ! grep -qE '<summary>chose:' "$PLAN"; then
+            echo "NOTE: Decisions found but no <summary>chose: …</summary> — check voice convention" >&2
+        fi
+    fi
+else
+    # Legacy plans run common checks only. Keep old unresolved-anchor helper as warning.
+    refs="$(grep -oE '\(#[a-z0-9_-]+\)' "$PLAN" | sed 's/^(#//; s/)$//' | sort -u || true)"
     slugs="$(awk '/^#### /{
         sub(/^#### /, "")
         line = tolower($0)
@@ -28,127 +120,15 @@ check_v15_anchors() {
         sub(/^-/, "", line)
         sub(/-$/, "", line)
         print line
-    }' "$plan" | sort -u || true)"
-
+    }' "$PLAN" | sort -u || true)"
     unresolved="$(comm -23 <(printf '%s\n' "$refs" | sed '/^$/d') <(printf '%s\n' "$slugs" | sed '/^$/d') || true)"
     if [ -n "$unresolved" ]; then
-        echo "NOTE: unresolved anchor references in $plan:" >&2
+        echo "NOTE: unresolved legacy anchor references in $PLAN:" >&2
         echo "$unresolved" | sed 's/^/  #/' >&2
     fi
-}
-
-# Only v15 plans are accepted. Older phase/v6 shapes must be rewritten.
-if ! grep -qE '^## Chapters$' "$PLAN" || ! grep -qE '^## Implementation tracks$' "$PLAN"; then
-    echo "Missing v15 sections: expected ## Chapters and ## Implementation tracks" >&2
-    echo "Legacy phase-based and v6 flat plan formats are no longer supported" >&2
-    exit 1
 fi
 
-# Required sections.
-for section in "Overview" "Context" "Chapters" "Implementation tracks" \
-               "Verification evidence" "Acceptance gate" \
-               "Verification Gate" "Review Gate" "State" "Resume"; do
-    if ! grep -qE "^## ${section}$" "$PLAN"; then
-        echo "v15: Missing section: ## ${section}" >&2
-        errors=$((errors + 1))
-    fi
-done
-
-# Required header lines.
-if ! grep -qE '^\*\*Strategy:\*\*' "$PLAN"; then
-    echo "v15: Missing **Strategy:** line" >&2
-    errors=$((errors + 1))
-fi
-if ! grep -qE '^\*\*Scope:\*\*' "$PLAN"; then
-    echo "v15: Missing **Scope:** line" >&2
-    errors=$((errors + 1))
-fi
-
-strategy="$(sed -n 's/^\*\*Strategy:\*\*[[:space:]]*//p' "$PLAN" | awk 'NR==1 {print $1}')"
-case "$strategy" in
-    CORRECTNESS|EQUIVALENCE|STRUCTURAL|REGRESSION|'{'STRATEGY'}'|CORRECTNESS\|*) ;;
-    *)
-        echo "v15: Invalid or missing strategy: '$strategy'" >&2
-        errors=$((errors + 1))
-        ;;
-esac
-
-if ! grep -q "TRUST BOUNDARY" "$PLAN"; then
-    echo "v15: Missing TRUST BOUNDARY marker" >&2
-    errors=$((errors + 1))
-fi
-
-chapter_count="$(grep -cE '^### Chapter [0-9]+' "$PLAN" 2>/dev/null || true)"
-chapter_count="${chapter_count:-0}"
-if [ "$chapter_count" -lt 1 ]; then
-    echo "v15: Plan must have at least one ### Chapter N" >&2
-    errors=$((errors + 1))
-fi
-
-awk '
-    /^### Chapter [0-9]+/ { if (in_chapter) check_chapter(); in_chapter=1; name=$0; reset(); next }
-    /^### / && in_chapter { check_chapter(); in_chapter=0; next }
-    /^## / && in_chapter { check_chapter(); in_chapter=0; next }
-    in_chapter && /^\*\*Why grouped:\*\*/ { if (!seen_what && !seen_dec && !seen_prov) why=1; else order=1 }
-    in_chapter && /^\*\*What changes:\*\*/ { if (why && !seen_dec && !seen_prov) seen_what=1; else order=1 }
-    in_chapter && /^\*\*Decisions:\*\*/ { if (why && seen_what && !seen_prov) seen_dec=1; else order=1 }
-    in_chapter && /^\*\*Provisions:\*\*/ { if (why && seen_what) seen_prov=1; else order=1 }
-    END { if (in_chapter) check_chapter(); exit(bad ? 1 : 0) }
-    function reset() { why=0; seen_what=0; seen_dec=0; seen_prov=0; order=0 }
-    function check_chapter() {
-        if (!why || !seen_what || order) {
-            print "v15: " name " missing/out-of-order Why grouped / What changes" > "/dev/stderr"
-            bad=1
-        }
-        if (!seen_dec) print "NOTE: " name " has no Decisions block" > "/dev/stderr"
-        if (!seen_prov) print "NOTE: " name " has no Provisions block" > "/dev/stderr"
-    }
-' "$PLAN" || errors=$((errors + 1))
-
-track_count="$(grep -cE '^### Track [0-9]+' "$PLAN" 2>/dev/null || true)"
-track_count="${track_count:-0}"
-if [ "$track_count" -lt 1 ]; then
-    echo "v15: Plan must have at least one ### Track N" >&2
-    errors=$((errors + 1))
-fi
-
-awk '
-    /^#### (Modify|Append to|Replace in) / && $0 !~ / lines / {
-        print "v15: code heading missing file/line location: " $0 > "/dev/stderr"
-        bad = 1
-    }
-    /^### Track [0-9]+/ { if (in_track) check_track(); in_track = 1; track_name = $0; reset(); next }
-    /^### / && in_track { check_track(); reset(); in_track = 0 }
-    /^## /  && in_track { check_track(); reset(); in_track = 0 }
-    in_track && /^\*\*Constraints:\*\*/  { has_constraints = 1 }
-    in_track && /^\*\*Code:\*\*/         { has_code = 1 }
-    in_track && /^\*\*Tests:\*\*/        { has_tests = 1 }
-    in_track && /^\*\*Verify:\*\*/       { has_verify = 1 }
-    in_track && /^\*\*Green when:\*\*/   { has_green = 1 }
-    END { if (in_track) check_track(); exit(bad ? 1 : 0) }
-    function reset() { has_constraints = 0; has_code = 0; has_tests = 0; has_verify = 0; has_green = 0 }
-    function check_track( missing) {
-        missing = ""
-        if (!has_constraints) missing = missing "Constraints "
-        if (!has_code)        missing = missing "Code "
-        if (!has_tests)       missing = missing "Tests "
-        if (!has_verify)      missing = missing "Verify "
-        if (!has_green)       missing = missing "Green-when "
-        if (missing != "") {
-            print "v15: " track_name " missing: " missing > "/dev/stderr"
-            bad = 1
-        }
-    }
-' "$PLAN" || errors=$((errors + 1))
-
-check_v15_anchors "$PLAN"
-
-if ! awk '/^## Verification Gate$/{f=1;next} /^## /{f=0} f && /Status:/{ok=1} END{exit(ok?0:1)}' "$PLAN"; then
-    echo "v15: Verification Gate missing Status field" >&2
-    errors=$((errors + 1))
-fi
-
-if ! grep -qE '^### Agent self-review' "$PLAN"; then
+if ! grep -qE '^### Agent self-review|^### Agent self-review \(fill after implementation\)' "$PLAN"; then
     echo "NOTE: Missing ### Agent self-review section" >&2
 fi
 
@@ -162,4 +142,8 @@ if [ "$errors" -gt 0 ]; then
     exit 1
 fi
 
-echo "Plan valid (v15): ${PLAN}"
+if [ "$is_new_format" = "1" ]; then
+    echo "Plan valid (flow-aligned): ${PLAN}"
+else
+    echo "Plan valid (legacy): ${PLAN}"
+fi

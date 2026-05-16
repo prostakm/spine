@@ -36,6 +36,10 @@ dependents: []
 - [ ] {testable criterion}
 - [ ] {testable criterion}
 
+## Flows
+<!-- 1-3 behavioral flows. One line per flow: trigger + components touched. -->
+- {trigger}: {component} → {component} → {observable outcome}
+
 ## Invariants
 <!-- Categories: range | relational | stability | preservation | structural.
      Enforcement hint: static | runtime | manual. Prefer static for rules that

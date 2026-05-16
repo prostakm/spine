@@ -418,11 +418,21 @@ ensure_yaml_child_line() {
 
 install_claude_skills() {
     local src_dir="$1" dst_dir="$2"
-    mkdir -p "$dst_dir/spine-brainstorm" "$dst_dir/spine-plan" "$dst_dir/spine-pwf" "$dst_dir/spine-spec"
+    mkdir -p \
+        "$dst_dir/spine-brainstorm" \
+        "$dst_dir/spine-closeout" \
+        "$dst_dir/spine-implement" \
+        "$dst_dir/spine-plan" \
+        "$dst_dir/spine-pwf" \
+        "$dst_dir/spine-spec" \
+        "$dst_dir/spine-verify"
     sync_managed_file "$src_dir/spine-brainstorm/SKILL.md" "$dst_dir/spine-brainstorm/SKILL.md"
-    sync_managed_file "$src_dir/spine-plan/SKILL.md"        "$dst_dir/spine-plan/SKILL.md"
+    sync_managed_file "$src_dir/spine-closeout/SKILL.md"   "$dst_dir/spine-closeout/SKILL.md"
+    sync_managed_file "$src_dir/spine-implement/SKILL.md"  "$dst_dir/spine-implement/SKILL.md"
+    sync_managed_file "$src_dir/spine-plan/SKILL.md"       "$dst_dir/spine-plan/SKILL.md"
     sync_managed_file "$src_dir/spine-pwf/SKILL.md"        "$dst_dir/spine-pwf/SKILL.md"
     sync_managed_file "$src_dir/spine-spec/SKILL.md"       "$dst_dir/spine-spec/SKILL.md"
+    sync_managed_file "$src_dir/spine-verify/SKILL.md"     "$dst_dir/spine-verify/SKILL.md"
 }
 
 merge_claude_settings_hooks() {
@@ -465,6 +475,7 @@ for event in ("PreToolUse", "PostToolUse", "Stop"):
 root_cmd = "bash -lc 'ROOT=$(git rev-parse --show-toplevel 2>/dev/null); [ -n \"$ROOT\" ] && \"$ROOT/.codex/hooks/{hook}\"'"
 
 spine_entries = {
+    "PreToolUse": {"matcher": "Write|Edit|MultiEdit|Bash|ApplyPatch", "hooks": [{"type": "command", "command": root_cmd.format(hook="pre-tool-use.sh")}]},
     "Stop": {"matcher": ".*", "hooks": [{"type": "command", "command": root_cmd.format(hook="stop.sh")}]},
 }
 
@@ -574,6 +585,7 @@ chmod +x ".spine/scripts/cleanup-features.sh" 2>/dev/null || true
 # Reference docs used by Spine skills
 mkdir -p "docs"
 sync_managed_file "$SCRIPT_DIR/docs/EXAMPLE-PLAN.md" "docs/EXAMPLE-PLAN.md"
+sync_managed_file "$SCRIPT_DIR/docs/EXAMPLE-PLAN-LEGACY.md" "docs/EXAMPLE-PLAN-LEGACY.md"
 
 # ── Step 2: Copy Codex config.toml (merge if exists) ──
 SPINE_CONFIG_BLOCK_BEGIN="# BEGIN PROJECT SPINE CONFIG"
@@ -602,17 +614,23 @@ rm -f "$SPINE_CONFIG_BLOCK_FILE"
 
 # ── Step 3: Copy skills ──
 mkdir -p ".agents/skills/spine-brainstorm"
+mkdir -p ".agents/skills/spine-closeout"
+mkdir -p ".agents/skills/spine-implement"
 mkdir -p ".agents/skills/spine-plan"
 mkdir -p ".agents/skills/spine-pwf"
 mkdir -p ".agents/skills/spine-spec"
+mkdir -p ".agents/skills/spine-verify"
 sync_managed_file "$SCRIPT_DIR/.agents/skills/spine-brainstorm/SKILL.md" ".agents/skills/spine-brainstorm/SKILL.md"
+sync_managed_file "$SCRIPT_DIR/.agents/skills/spine-closeout/SKILL.md" ".agents/skills/spine-closeout/SKILL.md"
+sync_managed_file "$SCRIPT_DIR/.agents/skills/spine-implement/SKILL.md" ".agents/skills/spine-implement/SKILL.md"
 sync_managed_file "$SCRIPT_DIR/.agents/skills/spine-plan/SKILL.md" ".agents/skills/spine-plan/SKILL.md"
 sync_managed_file "$SCRIPT_DIR/.agents/skills/spine-pwf/SKILL.md"  ".agents/skills/spine-pwf/SKILL.md"
 sync_managed_file "$SCRIPT_DIR/.agents/skills/spine-spec/SKILL.md" ".agents/skills/spine-spec/SKILL.md"
+sync_managed_file "$SCRIPT_DIR/.agents/skills/spine-verify/SKILL.md" ".agents/skills/spine-verify/SKILL.md"
 
 # ── Step 4: Copy hook scripts ──
 mkdir -p ".codex/hooks"
-for hook in session-start.sh stop.sh; do
+for hook in session-start.sh pre-tool-use.sh stop.sh; do
     if [ -f "$SCRIPT_DIR/hooks/$hook" ]; then
         sync_managed_file "$SCRIPT_DIR/hooks/$hook" ".codex/hooks/$hook"
         chmod +x ".codex/hooks/$hook"
@@ -621,6 +639,11 @@ done
 
 sync_managed_file "$SCRIPT_DIR/hooks/hooks.json" ".codex/hooks.json"
 remove_if_exists ".codex/hooks/hooks.json"
+
+# ── Step 4b: Copy Pi extension (OpenCode bridge) ──
+mkdir -p "$PROJECT_ROOT/.pi/extensions"
+sync_managed_file "$SCRIPT_DIR/pi/opencode-bridge.ts" "$PROJECT_ROOT/.pi/extensions/opencode-bridge.ts"
+info "Pi extension: .pi/extensions/opencode-bridge.ts"
 
 # ── Step 5: Handle AGENTS.md ──
 AGENTS_TEMPLATE="$SCRIPT_DIR/templates/AGENTS.md"
@@ -678,7 +701,6 @@ remove_if_exists ".codex/hooks/stop"
 remove_if_exists ".codex/hooks/session-start"
 remove_if_exists ".codex/hooks/pre-tool-use.old"
 remove_if_exists ".codex/hooks/post-tool-use.old"
-remove_if_exists ".codex/hooks/pre-tool-use.sh"
 remove_if_exists ".codex/hooks/post-tool-use.sh"
 remove_if_exists ".codex/hooks/stop.old"
 remove_if_exists ".codex/hooks/session-start.old"
@@ -743,6 +765,7 @@ fi
 # ── Step 10: OpenCode plugin and config ──
 mkdir -p ".opencode/plugins"
 sync_managed_file "$SCRIPT_DIR/hooks/opencode-spine.js" ".opencode/plugins/spine.js"
+sync_managed_file "$SCRIPT_DIR/hooks/spine-core.js" ".opencode/plugins/spine-core.js"
 upsert_opencode_json "opencode.json"
 
 # ── Summary ──
@@ -756,17 +779,21 @@ echo "    .spine/project.md          ← Edit: add your project vision + constra
 echo "    .spine/conventions.md      ← Edit: add your coding conventions"
 echo "    .spine/progress.md         ← Auto-updated as features complete"
 echo "    .spine/config.yaml         ← Set autonomy: low|med|high"
-echo "    .spine/features/_template/ ← Spec, plan, and findings/log templates (tree-first review, inline impl context)"
-echo "    docs/EXAMPLE-PLAN.md       ← Managed v15 example plan referenced by Spine skills"
+echo "    .spine/features/_template/ ← Spec, plan, and findings/log templates (flow-aligned review, diff-only impl)"
+echo "    docs/EXAMPLE-PLAN.md       ← Managed flow-aligned example plan referenced by Spine skills"
+echo "    docs/EXAMPLE-PLAN-LEGACY.md ← Archived legacy example plan"
 echo "    .codex/config.toml         ← Main-session Codex defaults"
 echo "    .codex/hooks.json          ← Codex hook configuration"
-echo "    .codex/hooks/              ← SessionStart and Stop hooks"
-echo "    .agents/skills/            ← spine-brainstorm, spine-plan, spine-pwf, spine-spec (Codex)"
+echo "    .codex/hooks/              ← SessionStart, PreToolUse and Stop hooks"
+echo "    .agents/skills/            ← spine-brainstorm, spine-plan, spine-pwf, spine-spec"
+echo "                                  spine-implement, spine-verify, spine-closeout (Codex)"
 echo "    AGENTS.md                  ← Minimal activation hint for Codex and OpenCode"
-echo "    .claude/skills/            ← spine-brainstorm, spine-plan, spine-pwf, spine-spec (Claude Code)"
-echo "    .claude/settings.json      ← Stop hook for Claude Code"
+echo "    .claude/skills/            ← spine-brainstorm, spine-plan, spine-pwf, spine-spec"
+echo "                                  spine-implement, spine-verify, spine-closeout (Claude Code)"
+echo "    .claude/settings.json      ← PreToolUse and Stop hooks for Claude Code"
 echo "    CLAUDE.md                  ← Minimal activation hint for Claude Code"
 echo "    .opencode/plugins/spine.js ← Review gate enforcement and SessionStart (OpenCode)"
+echo "    .pi/extensions/opencode-bridge.ts ← Loads existing OpenCode plugins via Pi's extension API"
 echo "    opencode.json              ← OpenCode config (plugin reference + AGENTS.md natively)"
 echo ""
 echo "  Next steps:"
@@ -775,8 +802,9 @@ echo "    2. Edit .spine/conventions.md with your coding conventions"
 echo "    3. Codex:       run 'codex'      — use \$spine-brainstorm to start a feature"
 echo "    4. Claude Code: run 'claude'     — use /spine-brainstorm to start a feature"
 echo "    5. OpenCode:    run 'opencode'   — reads AGENTS.md automatically"
+echo "    6. Pi:          run 'pi'         — extensions auto-loaded from .pi/extensions/"
 echo ""
-echo "  Tip: Plans use fenced trees plus selective markdown callouts."
+echo "  Tip: Plans follow data flow; rationale folds into <details>."
 echo "       For the best reading experience in Neovim, install:"
 echo "         https://github.com/MeanderingProgrammer/render-markdown.nvim"
 echo ""

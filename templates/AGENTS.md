@@ -3,20 +3,22 @@
 ## Project Spine
 
 Project Spine is installed as repo-local skills, but it is opt-in: only use it when the user explicitly asks for `$spine-brainstorm`, `$spine-spec`, `$spine-pwf`, or says to use Spine.
-When Spine is invoked, load the matching skill under `.agents/skills/` and keep the workflow rules, gates, and planning details there; otherwise work normally.
+When Spine is invoked, load the matching skill under `.agents/skills/`; `$spine-pwf` is the orchestrator and delegates phase detail to `spine-plan`, `spine-implement`, `spine-verify`, and `spine-closeout`. Otherwise work normally.
 Explicit chat approval (`approved`, `plan approved`, `spec approved`, `I approve`) counts during Spine review, but it must be mirrored into the active `plan.md` or `spec.md` before proceeding.
+**Gate enforcement:** A PreToolUse hook blocks writes to non-`.spine` files when `plan.md` is unapproved. Spec approval is not plan approval — after spec approval, you must stop and invoke `spine-plan`; only after plan approval (`R> APPROVED` in plan.md) may implementation begin.
 
-### Plan format
-
-Plans use the v15 shape:
-- Above trust boundary: Overview + Context + Chapters (each with Why grouped
-  / What changes / Decisions / Provisions) + Contracts.
-- Below trust boundary: Implementation tracks (Constraints / Code as full diff
-  snippets with file/line locations / Tests as In/Assert specs / Verify /
-  Green when) + Verification evidence + Acceptance gate.
-- Strategy: CORRECTNESS | EQUIVALENCE | STRUCTURAL | REGRESSION.
-- Reviewer reads top-to-bottom and stops at the trust boundary.
-- Cross-links use `[label](#slug)` heading-anchored navigation.
-- See `docs/EXAMPLE-PLAN.md` for the canonical worked example.
+### Plan detail
+Plans have two zones separated by a trust boundary:
+- **Above** (reviewer reads): system view → behaviors (per-flow walkthroughs)
+  with decisions, properties, and rules colocated at the flow step they govern;
+  acceptance matrix at the end as the index view
+- **Below** (agent executes): file manifest, implementation steps as unified
+  diffs (each with Intent + References + stable anchor), acceptance gate
+- Strategy selector: CORRECTNESS | EQUIVALENCE | STRUCTURAL | REGRESSION
+- Reviewer reads top-to-bottom following data flow; stops at trust boundary
+- Voice is telegraphed cavemen bullets; rationale folds into <details>
+- Properties at write/guard sites carry `never:` negative constraints
+- `R>` annotations go in the review zone (above trust boundary)
+- See `docs/EXAMPLE-PLAN.md` for the canonical example
 
 # <!-- END PROJECT SPINE -->

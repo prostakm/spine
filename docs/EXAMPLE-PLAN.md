@@ -1,468 +1,409 @@
 # Example Plan
 
-The example below uses the v15 plan format (chapters above, tracks below,
-anchored cross-links, full diff snippets with file/line locations, In/Assert
-test specs, caveman phrasing). It demonstrates a CORRECTNESS strategy across
-a realistic full-stack feature.
-
-Older phase-based and v6 flat plans are obsolete; rewrite them to this v15 shape.
-
 ````markdown
-# Feature: multi-state-tax-allocation
+# Feature: archive-payroll-runs
 
-## Overview
+> **Story:**
+> Payroll admins need retire old draft runs without deleting audit history.
+> Current list grows forever and accidental rerun stays one click away.
+> Archive action hides stale runs, keeps read-only audit trail.
 
-### System flow
+## Status
+- **Status:** REVIEW
+- **Strategy:** STRUCTURAL
+- **Risk:** MEDIUM — destructive-looking action, audit-sensitive data
+- **Scope:** Archive completed or draft payroll runs; hide archived runs by default.
+
+## System view
 
 ```text
-┌─ Allocation engine ─────────────────────────────────┐
-│ tax/allocation.py                            [M]    │
-│ Split wages by worked-state days.                   │
-│ tax/models.py                                [M]    │
-│ Store allocation inputs and outputs.                │
-└────────┬────────────────────────────────────────────┘
-         │ consumed by
-         ▼
-┌─ Payroll tax service ───────────────────────────────┐
-│ payroll/tax_service.py                       [M]    │
-│ Read allocations before withholding math.           │
-└────────┬────────────────────────────────────────────┘
-         │ proved by
-         ▼
-┌─ Tests ─────────────────────────────────────────────┐
-│ tests/test_tax_allocation.py                 [C]    │
-│ Fixtures + properties for allocation rules.         │
-│ tests/test_tax_api.py                        [C]    │
-│ API smoke proof behind feature flag.                │
-└─────────────────────────────────────────────────────┘
+[UNCHANGED] Admin UI
+    │ click Archive / toggle Include archived
+    ▼
+[M] payroll API ── guard status + auth ──► [M] payroll_runs.archived_at
+    │                                      │
+    └──────── list query filters ◄────────┘
+[NEW] audit event on first archive only
 ```
 
-### File map
+## Behaviors
+
+- Flow A — archive a run (write path)
+- Flow B — list runs (read path)
+
+System-wide invariants:
+
+- **P1** — archived run remains auditable
+  - holds: DB row + audit event
+  - test: `test_archive_preserves_run_and_writes_audit`
+  - never: delete `payroll_runs` row
+  - never: redact existing totals
+- **P2** — archive idempotent
+  - holds: archive endpoint
+  - test: `test_archive_idempotent`
+  - never: rewrite `archived_at` on second call
+  - never: emit duplicate audit events
+
+## Flow A — archive a run
+
+```text
+UI action → POST /payroll-runs/:id/archive → auth/status guards
+          → UPDATE archived_at WHERE archived_at IS NULL
+          → emit audit once → return archived run
+```
+
+### A.1 — Request accepted and guarded
+
+> **Step intent:** Validate caller and run status before any write. Running runs stay protected.
+
+- 🔴 **D1** — archive as soft delete
+  <details><summary>chose: nullable `archived_at`</summary>
+
+  - over: `is_archived` boolean
+  - why not: loses ordering, loses audit timestamp
+  - consequence: all active queries filter `archived_at IS NULL`
+  </details>
+
+- **R1** — only payroll admins archive runs
+  - holds: API guard
+  - test: `test_archive_requires_payroll_admin`
+  - must not: allow employee self-service token
+
+- **R2** — running run cannot archive
+  - holds: API guard
+  - test: `test_archive_rejects_running_run`
+  - never: archive run with status `processing`
+
+- → impl: [I2](#i2), [I3](#i3)
+
+### A.2 — Archive write commits once
+
+> **Step intent:** Set the timestamp once, then treat repeats as successful no-ops.
+
+- 🔴 **P3** — write is compare-and-set
+  - holds: repository update
+  - test: `test_archive_idempotent`
+  - pattern: `UPDATE ... WHERE archived_at IS NULL`
+  - never: update already archived row
+  - never: change `updated_at` on no-op retry
+
+- 🟡 **D2** — return current archived row on retry
+  <details><summary>chose: 200 with existing archive state</summary>
+
+  - over: 409 conflict
+  - why not: retrying clients need safe convergence
+  - consequence: endpoint result stable after first success
+  </details>
+
+- → impl: [I1](#i1), [I3](#i3), [I7](#i7)
+
+### A.3 — Audit emitted
+
+> **Step intent:** Record who archived the run, but only for the first state change.
+
+- **P4** — one audit event per archive transition
+  - holds: service layer
+  - test: `test_archive_preserves_run_and_writes_audit`
+  - never: emit audit event on idempotent retry
+
+- → impl: [I3](#i3), [I7](#i7)
+
+## Flow B — list runs
+
+```text
+GET /payroll-runs → parse include_archived → query active by default
+                  → serialize archived_at → UI badge + toggle
+```
+
+### B.1 — Default list hides archived
+
+> **Step intent:** Keep normal payroll work queue clean without losing access to archived history.
+
+- 🟡 **D3** — active-only default
+  <details><summary>chose: hide archived unless requested</summary>
+
+  - over: show all with badge
+  - why not: old stale runs stay noisy
+  - consequence: query param needed for audit view
+  </details>
+
+- **P5** — archived excluded by default
+  - holds: list repository
+  - test: `test_list_excludes_archived_by_default`
+  - never: hide active runs
+
+- → impl: [I4](#i4), [I6](#i6), [I8](#i8)
+
+### B.2 — Audit view includes archived
+
+> **Step intent:** Let admins recover archived run context on demand.
+
+- **R3** — `include_archived=true` returns active and archived
+  - holds: API query parser
+  - test: `test_list_includes_archived_when_requested`
+  - never: require separate endpoint
+
+- **P6** — archived state visible in response
+  - holds: serializer + UI
+  - test: `test_archived_badge_visible`
+  - never: infer archived from status
+
+- → impl: [I4](#i4), [I5](#i5), [I6](#i6), [I8](#i8), [I9](#i9)
+
+## Acceptance matrix
+
+| ID | Invariant / rule | Test | Strategy |
+|----|------------------|------|----------|
+| P1 | preserve run + audit | `test_archive_preserves_run_and_writes_audit` | STRUCTURAL |
+| P2 | idempotent archive | `test_archive_idempotent` | CORRECTNESS |
+| R1 | admin only | `test_archive_requires_payroll_admin` | CORRECTNESS |
+| R2 | no running archive | `test_archive_rejects_running_run` | CORRECTNESS |
+| P5 | default excludes archived | `test_list_excludes_archived_by_default` | STRUCTURAL |
+| R3 | include archived param | `test_list_includes_archived_when_requested` | STRUCTURAL |
+| P6 | response/UI exposes archived | `test_archived_badge_visible` | STRUCTURAL |
+
+---
+
+<!-- ═══════════════════════════════════════════════════════ -->
+<!-- TRUST BOUNDARY — reviewer stops here                   -->
+<!-- ═══════════════════════════════════════════════════════ -->
+
+## Agent instructions
+
+### Verification packet
+
+- Strategy: `STRUCTURAL`
+- Properties: `P1, P2, P3, P4, P5, P6`
+- Rules: `R1, R2, R3`
+- Verifier constraints: fresh subagent; judge from migration, API tests, UI tests.
+
+### File manifest
 
 ```text
 payroll/
-├── tax/
-│   ├── allocation.py                 [M] allocation selector + rounding
-│   └── models.py                     [M] input/output dataclasses
-├── payroll/
-│   └── tax_service.py                [M] reads allocation results
+├── db/migrations/20260429_add_archived_at.sql        [C] → I1
+├── api/payroll_runs.py                               [M] → I2, I4
+├── services/payroll_runs.py                          [M] → I3
+├── repositories/payroll_runs.py                      [M] → I3, I4
+├── serializers/payroll_runs.py                       [M] → I5
+├── web/payroll/RunList.tsx                           [M] → I6
 └── tests/
-    ├── test_tax_allocation.py        [C] rules + properties
-    └── test_tax_api.py               [C] feature-flag smoke
+    ├── test_archive_payroll_runs.py                  [C] → I7
+    ├── test_list_payroll_runs.py                     [C] → I8
+    └── RunList.test.tsx                              [C] → I9
 ```
 
-## Context
+### Implementation
 
-- Spec: `.spine/features/multi-state-tax-allocation/spec.md` (approved)
-- Goal: allocate taxable wages across worked states before withholding.
-- Gap: current payroll uses resident state for all wages.
-- In: wage allocation, rounding, tax-service integration, tests.
-- Out: reciprocity agreements, amended returns, UI editor.
-- Constraints: cents conserved; no floats; feature flag gates API output.
+#### I1 — add archive timestamp <a id="i1"></a>
 
-**Status:** REVIEW
-**Scope:** Multi-state taxable-wage allocation for one payroll run.
-**Risk:** HIGH — money math + tax reporting.
-**Strategy:** CORRECTNESS
+- **Intent:** Add nullable archive timestamp and index active run lookup.
+- **References:** D1, P1, P3
+- **Critical:** 🔴
+
+```diff
+--- /dev/null
++++ b/payroll/db/migrations/20260429_add_archived_at.sql
+@@ -0,0 +1,3 @@
++ALTER TABLE payroll_runs ADD COLUMN archived_at TIMESTAMPTZ NULL;
++CREATE INDEX payroll_runs_active_idx
++  ON payroll_runs(company_id, pay_date) WHERE archived_at IS NULL;
+```
+
+#### I2 — add archive route guard <a id="i2"></a>
+
+- **Intent:** Route archive requests through admin and status guards.
+- **References:** R1, R2
+- **Critical:** 🔴
+
+```diff
+--- a/payroll/api/payroll_runs.py
++++ b/payroll/api/payroll_runs.py
+@@ -22,6 +22,14 @@ def get_run(run_id):
+     return serialize_run(service.get_run(run_id))
++
++@router.post("/payroll-runs/{run_id}/archive")
++def archive_run(run_id, user=Depends(require_payroll_admin)):
++    run = service.get_run(run_id)
++    if run.status == "processing":
++        raise HTTPException(status_code=409, detail="processing run cannot be archived")
++    return serialize_run(service.archive_run(run_id, user.id))
+```
+
+#### I3 — archive service compare-and-set <a id="i3"></a>
+
+- **Intent:** Archive once, return current row on repeat, emit audit only on transition.
+- **References:** D2, P2, P3, P4
+- **Critical:** 🔴
+
+```diff
+--- a/payroll/services/payroll_runs.py
++++ b/payroll/services/payroll_runs.py
+@@ -41,6 +41,13 @@ def list_runs(company_id):
+     return repo.list_runs(company_id)
++
++def archive_run(run_id, actor_id):
++    archived = repo.archive_once(run_id)
++    run = repo.get_run(run_id)
++    if archived:
++        audit.emit("payroll_run.archived", actor_id=actor_id, run_id=run_id)
++    return run
+--- a/payroll/repositories/payroll_runs.py
++++ b/payroll/repositories/payroll_runs.py
+@@ -55,6 +55,13 @@ def get_run(run_id):
+     return db.fetch_one("SELECT * FROM payroll_runs WHERE id = :id", {"id": run_id})
++
++def archive_once(run_id):
++    result = db.execute("""
++        UPDATE payroll_runs SET archived_at = now()
++        WHERE id = :id AND archived_at IS NULL
++    """, {"id": run_id})
++    return result.rowcount == 1
+```
+
+#### I4 — list query archive filter <a id="i4"></a>
+
+- **Intent:** Hide archived rows by default; include them when explicitly requested.
+- **References:** D3, P5, R3
+
+```diff
+--- a/payroll/api/payroll_runs.py
++++ b/payroll/api/payroll_runs.py
+@@ -10,7 +10,8 @@ router = APIRouter()
+-@router.get("/payroll-runs")
+-def list_runs(company_id=Depends(current_company_id)):
+-    return [serialize_run(run) for run in service.list_runs(company_id)]
++@router.get("/payroll-runs")
++def list_runs(company_id=Depends(current_company_id), include_archived: bool = False):
++    return [serialize_run(run) for run in service.list_runs(company_id, include_archived)]
+--- a/payroll/repositories/payroll_runs.py
++++ b/payroll/repositories/payroll_runs.py
+@@ -11,7 +11,10 @@ def list_runs(company_id):
+-    return db.fetch_all("SELECT * FROM payroll_runs WHERE company_id = :company_id", params)
++    where = "company_id = :company_id"
++    if not include_archived:
++        where += " AND archived_at IS NULL"
++    return db.fetch_all(f"SELECT * FROM payroll_runs WHERE {where}", params)
+```
+
+#### I5 — serialize archived state <a id="i5"></a>
+
+- **Intent:** Expose archive timestamp so clients do not infer from status.
+- **References:** P6
+
+```diff
+--- a/payroll/serializers/payroll_runs.py
++++ b/payroll/serializers/payroll_runs.py
+@@ -8,6 +8,7 @@ def serialize_run(run):
+         "id": run.id,
+         "status": run.status,
+         "pay_date": run.pay_date.isoformat(),
++        "archived_at": run.archived_at.isoformat() if run.archived_at else None,
+     }
+```
+
+#### I6 — UI archive controls <a id="i6"></a>
+
+- **Intent:** Add archive action, archived badge, and include-archived toggle.
+- **References:** D3, P6
+
+```diff
+--- a/payroll/web/payroll/RunList.tsx
++++ b/payroll/web/payroll/RunList.tsx
+@@ -12,6 +12,9 @@ export function RunList() {
+   return <section>
++    <label><input type="checkbox" onChange={toggleArchived} /> Include archived</label>
+     {runs.map(run => <article key={run.id}>
++      {run.archived_at && <span>Archived</span>}
+       <span>{run.status}</span>
++      {!run.archived_at && <button onClick={() => archiveRun(run.id)}>Archive</button>}
+     </article>)}
+   </section>
+```
+
+#### I7 — archive endpoint tests <a id="i7"></a>
+
+- **Intent:** Prove guards, idempotency, preservation, and audit behavior.
+- **References:** P1, P2, P3, P4, R1, R2
+- **Critical:** 🔴
+
+```diff
+--- /dev/null
++++ b/payroll/tests/test_archive_payroll_runs.py
+@@ -0,0 +1,5 @@
++def test_archive_requires_payroll_admin(): pass
++def test_archive_rejects_running_run(): pass
++def test_archive_idempotent(): pass
++def test_archive_preserves_run_and_writes_audit(): pass
+```
+
+#### I8 — list archive tests <a id="i8"></a>
+
+- **Intent:** Prove default active-only list and explicit audit view.
+- **References:** P5, R3
+
+```diff
+--- /dev/null
++++ b/payroll/tests/test_list_payroll_runs.py
+@@ -0,0 +1,3 @@
++def test_list_excludes_archived_by_default(): pass
++def test_list_includes_archived_when_requested(): pass
+```
+
+#### I9 — UI archive badge test <a id="i9"></a>
+
+- **Intent:** Prove archived state visible and controls not shown for archived rows.
+- **References:** P6
+
+```diff
+--- /dev/null
++++ b/payroll/tests/RunList.test.tsx
+@@ -0,0 +1,2 @@
++it("test_archived_badge_visible", () => {})
+```
+
+### Acceptance gate
+
+- [ ] `pytest payroll/tests/test_archive_payroll_runs.py payroll/tests/test_list_payroll_runs.py` passes
+- [ ] `npm test -- RunList.test.tsx` passes
+- [ ] Properties `P1..P6` hold
+- [ ] Rules `R1..R3` hold
+
+### Agent self-review (fill after implementation)
+
+- Hardest: ___
+- Least confident: ___
+- Deviations from plan: ___
 
 ---
 
-## Chapters
-
-### Chapter 1: Allocation engine
-
-**Why grouped:** Allocation math, rounding, and conservation are one review unit because a
-rounding choice changes taxable wages. Reviewing them together catches money drift.
-
-**What changes:** Add an allocation selector that splits gross wages by state work days and
-rounds residual cents into the largest remainder bucket.
-
-**Decisions:**
-
-> [!CAUTION] **D1:** Integer cents only
-> - **Chose:** inputs and outputs are integer cents; percentages are fractions.
-> - **Over:** decimal floats — silent penny drift.
-> - **Consequence:** allocation code owns residual cents
->   ([code](#modify-taxallocationpy-lines-1-34), [`test_allocation_conserves_cents`](#test_allocation_conserves_cents)).
-
-> [!IMPORTANT] **D2:** Largest remainder residual
-> - **Chose:** floor each share, then distribute leftover cents by largest fractional remainder.
-> - **Over:** put all residual on resident state — biased and hard to explain.
-> - **Consequence:** deterministic tie-break required by state code
->   ([code](#modify-taxallocationpy-lines-1-34), [`test_residual_uses_largest_remainder`](#test_residual_uses_largest_remainder)).
-
-**Provisions:**
-
-*Properties:*
-
-- **P0** — `runtime` — `human` — cents conserved.
-  - Invariant: sum allocated cents equals gross taxable cents.
-  - Evidence: [`test_allocation_conserves_cents`](#test_allocation_conserves_cents).
-- **P1** — `runtime` — `human` — no negative allocations.
-  - Invariant: each state allocation is `>= 0` cents.
-  - Evidence: [`test_allocation_never_negative`](#test_allocation_never_negative).
-- **P2** — `runtime` — `human` — largest remainder wins residual.
-  - Invariant: leftover cents go to highest fractional remainder; ties sort by state code.
-  - Evidence: [`test_residual_uses_largest_remainder`](#test_residual_uses_largest_remainder).
-
-*Rules / fixtures:*
-
-**R1: single-state pass-through**
-
-- `CA: 10 days`, gross `$1000.00` → `CA: $1000.00`.
-
-**R2: equal split**
-
-- `CA: 5`, `NY: 5`, gross `$1000.00` → `CA: $500.00`, `NY: $500.00`.
-
-**R3: residual cent**
-
-- `CA: 1`, `NY: 2`, gross `$1000.00` → total conserved; extra cent to largest remainder.
-
-*Edge cases:*
-
-- Zero gross → all allocations zero.
-- Zero total days → validation error before allocation.
-- Unknown state code → validation error; no silent bucket.
-
-### Chapter 2: Tax service integration
-
-**Why grouped:** The tax service is where allocation becomes user-visible withholding. It must
-consume selector output without duplicating allocation logic.
-
-**What changes:** Tax service asks the allocation selector for state taxable wages, then runs
-existing withholding calculators per state.
-
-**Decisions:**
-
-> [!IMPORTANT] **D3:** Selector boundary, not service math
-> - **Chose:** `tax_service.py` calls `allocate_taxable_wages` and treats result as read-only.
-> - **Over:** inline split inside tax service — duplicates rules and hides residual handling.
-> - **Consequence:** allocation reads → selector only
->   ([code](#modify-payrolltax_servicepy-lines-1-18), [`test_tax_service_uses_allocator`](#test_tax_service_uses_allocator)).
-
-**Provisions:**
-
-*Properties:*
-
-- **P3** — `runtime` — `human-validated` — service preserves total taxable wages.
-  - Invariant: tax service state taxable total equals run gross taxable cents.
-  - Evidence: [`test_tax_service_uses_allocator`](#test_tax_service_uses_allocator).
-- **P4** — `static` — `agent-proposed` — no duplicate allocation math.
-  - Invariant: tax service imports selector; no local day-ratio math.
-  - Evidence: [`test_tax_service_has_no_ratio_math`](#test_tax_service_has_no_ratio_math).
-
-*Rules / fixtures:*
-
-**R4: resident + worked state**
-
-- Resident `CA`, worked `CA + NY` → withholding lines for both states.
-
-**R5: feature flag off**
-
-- Flag off → old resident-only behavior preserved.
-
-*Boundary behavior:*
-
-```text
-allocate enabled + multi-state days → per-state taxable wages
-allocate disabled + multi-state days → resident taxable wages only
-invalid work-day total → validation error before withholding
-```
-
-*Edge cases:*
-
-- Duplicate state entries → merge before allocation.
-- State with zero days → omitted from withholding input.
-
-### Chapter 3: API contract and rollout
-
-**Why grouped:** API shape and rollout flag decide what external callers see. They belong with
-acceptance edge cases, not with internal allocation math.
-
-**What changes:** API includes allocation details only behind `multi_state_tax_allocation` and
-keeps old response shape otherwise.
-
-**Decisions:**
-
-> [!WARNING] **D4:** Flag-gated response expansion
-> - **Chose:** add `state_allocations` only when feature flag is enabled.
-> - **Over:** always include empty array — client-visible contract churn.
-> - **Consequence:** rollout safe for existing API consumers
->   ([code](#modify-apiresponsespy-lines-20-38), [`test_api_hides_allocations_when_flag_off`](#test_api_hides_allocations_when_flag_off)).
-
-**Provisions:**
-
-*Properties:*
-
-- **P5** — `runtime` — `human` — flag preserves old API.
-  - Invariant: flag off response has no `state_allocations` key.
-  - Evidence: [`test_api_hides_allocations_when_flag_off`](#test_api_hides_allocations_when_flag_off).
-- **P6** — `runtime` — `human` — flag exposes conserved allocations.
-  - Invariant: flag on response allocations sum to gross taxable cents.
-  - Evidence: [`test_api_returns_conserved_allocations_when_flag_on`](#test_api_returns_conserved_allocations_when_flag_on).
-
-*Edge cases:*
-
-- Acceptance: flag off + multi-state input → old response exactly.
-- Acceptance: flag on + zero gross → allocation array present with zero totals.
-- Acceptance: validation error → no partial allocation in response.
-
-### Cross-chapter
-
-- D1 integer cents supports D3 service preservation and D4 API conservation.
-- P0 is root proof for P3 and P6.
-
----
-
-## Contracts
-
-### Inputs / Outputs
-
-```python
-@dataclass(frozen=True)
-class WorkStateDays:
-    state: str
-    days: int
-
-@dataclass(frozen=True)
-class StateAllocation:
-    state: str
-    taxable_cents: int
-```
-
-### Side effects
-
-- ⚠ Payroll API response expands only behind `multi_state_tax_allocation`.
-- ⚠ Tax service emits more state withholding lines when flag enabled.
-
-═══════════════ TRUST BOUNDARY — reviewer stops here ═══════════════
-
-## Implementation tracks
-
-### Track 1: Allocation engine and tax service
-
-**Depends on:** none.
-
-**Constraints:**
-
-- No floats.
-- Residual deterministic.
-- Allocation reads → selector only.
-- Keep flag-off path resident-only.
-
-**Code:**
-
-#### Modify tax/allocation.py lines 1-34
-
-```diff
-@@ allocate_taxable_wages (tax/allocation.py:1-34) @@
-+def allocate_taxable_wages(gross_cents, work_days):
-+    total_days = sum(day.days for day in work_days)
-+    if total_days <= 0:
-+        raise ValueError("work days required")
-+    shares = []
-+    for day in merge_by_state(work_days):
-+        raw = gross_cents * day.days
-+        cents = raw // total_days
-+        remainder = raw % total_days
-+        shares.append((day.state, cents, remainder))
-+    leftover = gross_cents - sum(cents for _, cents, _ in shares)
-+    for state in sorted(shares, key=lambda row: (-row[2], row[0]))[:leftover]:
-+        add_cent(state)
-+    return to_allocations(shares)
-```
-
-#### Modify payroll/tax_service.py lines 1-18
-
-```diff
-@@ imports + state_taxable_wages (payroll/tax_service.py:1-18) @@
-+from tax.allocation import allocate_taxable_wages
- from tax.residency import resident_taxable_wages
- 
- def state_taxable_wages(run, flags):
-+    if flags.enabled("multi_state_tax_allocation"):
-+        return allocate_taxable_wages(run.gross_taxable_cents, run.work_state_days)
-     return resident_taxable_wages(run)
-```
-
-**Tests:**
-
-#### `test_allocation_conserves_cents`
-
-*Hypothesis property*. Proves P0.
-
-- In: gross cents `0..1_000_000`; non-empty work-day list; states unique.
-- Assert: `sum(a.taxable_cents for a in result) == gross_cents`.
-
-#### `test_allocation_never_negative`
-
-*Hypothesis property*. Proves P1.
-
-- In: gross cents `0..1_000_000`; days `0..365`; at least one positive total.
-- Assert: every allocation `>= 0`.
-
-#### `test_residual_uses_largest_remainder`
-
-*Parametrized*. Proves P2.
-
-- In: `gross_cents=100000`; `CA=1 day`; `NY=2 days`.
-- Assert: total conserved; extra cent assigned by largest remainder and state-code tie-break.
-
-#### `test_tax_service_uses_allocator`
-
-*Unit*. Proves P3.
-
-- In: run with `CA=5`, `NY=5`; flag enabled; allocator spy.
-- Assert: tax service calls allocator once; taxable total equals gross.
-
-#### `test_tax_service_has_no_ratio_math`
-
-*Static*. Proves P4.
-
-- In: source text for `payroll/tax_service.py`.
-- Assert: imports `allocate_taxable_wages`; no `days / total_days` or `gross * days` pattern.
-
-**Verify:**
-
-```bash
-pytest tests/test_tax_allocation.py tests/test_tax_service.py
-```
-
-**Green when:**
-
-- `test_allocation_conserves_cents` green.
-- `test_allocation_never_negative` green.
-- `test_residual_uses_largest_remainder` green.
-- `test_tax_service_uses_allocator` green.
-- `test_tax_service_has_no_ratio_math` green.
-
-### Track 2: API response and rollout tests
-
-**Depends on:** Track 1.
-
-**Constraints:**
-
-- Flag off preserves old response exactly.
-- Flag on includes allocation array.
-- API response uses selector output; no recompute.
-
-**Code:**
-
-#### Modify api/responses.py lines 20-38
-
-```diff
-@@ payroll_response (api/responses.py:20-38) @@
- def payroll_response(run, flags):
-     payload = base_payroll_response(run)
-+    if flags.enabled("multi_state_tax_allocation"):
-+        payload["state_allocations"] = [
-+            {"state": row.state, "taxable_cents": row.taxable_cents}
-+            for row in run.state_allocations
-+        ]
-     return payload
-```
-
-#### New file tests/test_tax_api.py
-
-```python
-# API allocation tests live here. Each test cites P5 or P6.
-```
-
-**Tests:**
-
-#### `test_api_hides_allocations_when_flag_off`
-
-*Snapshot*. Proves P5.
-
-- In: multi-state payroll run; flag disabled.
-- Assert: response equals old snapshot; no `state_allocations` key.
-
-#### `test_api_returns_conserved_allocations_when_flag_on`
-
-*Component*. Proves P6.
-
-- In: multi-state payroll run; flag enabled.
-- Assert: `state_allocations` present; sum taxable cents equals gross taxable cents.
-
-**Verify:**
-
-```bash
-pytest tests/test_tax_api.py tests/test_tax_allocation.py tests/test_tax_service.py
-```
-
-**Green when:**
-
-- `test_api_hides_allocations_when_flag_off` green.
-- `test_api_returns_conserved_allocations_when_flag_on` green.
-- Track 1 tests still green.
-
-## Verification evidence
-
-### Verifier packet
-
-- Strategy: `CORRECTNESS`.
-- Test files:
-  - `tests/test_tax_allocation.py`
-  - `tests/test_tax_service.py`
-  - `tests/test_tax_api.py`
-- Each test cites its provision in a docstring/comment.
-- Verifier extracts cited IDs; confirms every chapter provision has at least one citing test.
-- Verifier constraints: fresh subagent; chapter provisions + test files only; no implementation code.
-
-### Mutation candidates
-
-- Drop residual cent → P0 fails.
-- Sort residual ascending → P2 fails.
-- Recompute ratio in tax service → P4 fails.
-- Always include API key → P5 fails.
-- Flag on returns resident total only → P6 fails.
-
-### Static-proof gaps
-
-- Static no-ratio check can miss helper indirection.
-- API snapshot cannot prove tax correctness; allocation properties do.
+## Decisions log
+- 2026-04-29 — soft-delete archive — preserve audit history and retry safety
+
+## Errors
+- none — attempt: none — resolution: none
 
 ## Verification Gate
-
 - Status: pending
-- Last run: never
-- Verdict: pending
-- Blocking issues: none yet
+- Last run: none
+- Verdict: not run
 
-## Acceptance gate
-
-- [ ] Track 1 green — allocation + service tests pass.
-- [ ] Track 2 green — API rollout tests pass.
-- [ ] Every chapter provision has at least one citing test.
-- [ ] Flag-off API snapshot unchanged.
-- [ ] No float math in allocation path.
+<!-- REVIEW: PENDING — add R> comments inline. -->
 
 ## Review Gate
-
 - Status: pending
 
-## State
-
-- Phase: planning
-- Verification Gate: pending
-
 ## Resume
-
 - Source: plan
 - Phase: planning
 - Gate: pending
-- Current Slice: review and approve plan
-- Next Step: reviewer reads chapters top-down, marks `> [R]: APPROVED`
-- Open Questions: none
 - Verification Gate: pending
-- Files in Play: `.spine/features/multi-state-tax-allocation/plan.md`
+- Current Slice: example plan ready for review
+- Next Step: use as canonical reference for new flow-aligned plans
+- Open Questions: none
+- Files in Play: docs/EXAMPLE-PLAN.md
 
-### Agent self-review
-
-(Filled after implementation completes.)
-
-- Hardest: residual-cent proof.
-- Least confident: static no-ratio heuristic.
-- Deviations: none yet.
+## State
+- Phase: planning
+- Verification Gate: pending
 ````

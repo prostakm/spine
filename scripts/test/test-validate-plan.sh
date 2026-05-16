@@ -4,8 +4,7 @@ set -euo pipefail
 SCRIPT_DIR="$( cd -- "$( dirname -- "${BASH_SOURCE[0]}" )" && pwd )"
 REPO_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
 VALIDATOR="$REPO_ROOT/scripts/validate-plan.sh"
-FIXTURES="$SCRIPT_DIR/fixtures"
-export FIXTURES
+TMP_DIR="$REPO_ROOT/.tmp-validate-plan-tests"
 
 pass=0
 fail=0
@@ -21,76 +20,47 @@ run_case() {
     fi
 }
 
-# P0: test_chapter_block_order — validator accepts well-formed v15.
-run_case "test_chapter_block_order" \
-    "$VALIDATOR" "$REPO_ROOT/docs/EXAMPLE-PLAN.md"
+cleanup() { rm -rf "$TMP_DIR"; }
+trap cleanup EXIT
+cleanup
+mkdir -p "$TMP_DIR"
 
-# P1: test_anchor_links_resolve — example has no unresolved-anchor NOTE.
-run_case "test_anchor_links_resolve" \
-    bash -c "'$VALIDATOR' '$REPO_ROOT/docs/EXAMPLE-PLAN.md' 2>&1 | \
-             grep -qE 'NOTE: unresolved anchor' && false || true"
+run_case "new_format_example_valid" \
+    bash -c "'$VALIDATOR' '$REPO_ROOT/docs/EXAMPLE-PLAN.md' | grep -qE 'Plan valid \\(flow-aligned\\)'"
 
-# P2: test_slug_rule_matches_github_and_marksman — golden fixture.
-run_case "test_slug_rule_matches_github_and_marksman" \
-    python3 - "$FIXTURES/slug_cases.json" <<'PY'
-import json, re, sys
-bad = False
-for row in json.load(open(sys.argv[1])):
-    heading = row["heading"]
-    expected = row["slug"]
-    actual = heading.lower()
-    actual = re.sub(r"[`*~()\[\]{}.,:;!?\"'<>|+=&^%$#@]", "", actual)
-    actual = re.sub(r"[/\\]", "", actual)
-    actual = re.sub(r"\s+", "-", actual.strip())
-    if actual != expected:
-        print(f"  heading={heading} expected={expected} actual={actual}", file=sys.stderr)
-        bad = True
-sys.exit(1 if bad else 0)
-PY
+run_case "template_valid" \
+    bash -c "'$VALIDATOR' '$REPO_ROOT/templates/.spine/features/_template/plan.md' | grep -qE 'Plan valid \\(flow-aligned\\)'"
 
-# P4: test_format_detection — only v15 is accepted.
-run_case "test_format_detection::v15" \
-    bash -c "'$VALIDATOR' '$REPO_ROOT/docs/EXAMPLE-PLAN.md' | grep -qE 'Plan valid \\(v15\\)'"
+run_case "legacy_example_valid" \
+    bash -c "'$VALIDATOR' '$REPO_ROOT/docs/EXAMPLE-PLAN-LEGACY.md' | grep -qE 'Plan valid \\(legacy\\)'"
 
-run_case "test_format_detection::reject_legacy" \
+run_case "broken_i_anchor_hard_fails" \
     bash -c '
-      tmp=$(mktemp)
-      printf "# Feature: old\n\n### Phase 1: old\n\n## Review Gate\n" > "$tmp"
-      if "'$VALIDATOR'" "$tmp" 2>&1 | grep -q "no longer supported"; then
-        rm -f "$tmp"
-        exit 0
-      fi
-      rm -f "$tmp"
-      exit 1
+      cp "'$REPO_ROOT'/templates/.spine/features/_template/plan.md" "'$TMP_DIR'/bad-anchor.md"
+      printf "\nBad ref [I99](#i99)\n" >> "'$TMP_DIR'/bad-anchor.md"
+      "'$VALIDATOR'" "'$TMP_DIR'/bad-anchor.md" 2>&1 | grep -q "Broken anchor reference: #i99"
     '
 
-run_case "test_format_detection::reject_v6_flat" \
+run_case "details_below_boundary_hard_fails" \
     bash -c '
-      tmp=$(mktemp)
-      printf "# Feature: old\n\n## Decisions\n\n## Spec + proof\n\n## Agent instructions\n" > "$tmp"
-      if "'$VALIDATOR'" "$tmp" 2>&1 | grep -q "no longer supported"; then
-        rm -f "$tmp"
-        exit 0
-      fi
-      rm -f "$tmp"
-      exit 1
+      cp "'$REPO_ROOT'/templates/.spine/features/_template/plan.md" "'$TMP_DIR'/bad-details.md"
+      printf "\n<details><summary>bad</summary>\n\n- bad\n</details>\n" >> "'$TMP_DIR'/bad-details.md"
+      "'$VALIDATOR'" "'$TMP_DIR'/bad-details.md" 2>&1 | grep -q "Found <details> below trust boundary"
     '
 
-run_case "test_code_headings_require_line_location" \
+run_case "four_flows_warns_but_passes" \
     bash -c '
-      tmp=$(mktemp)
-      python3 - "'$REPO_ROOT'/docs/EXAMPLE-PLAN.md" "$tmp" <<"PY"
+      cp "'$REPO_ROOT'/templates/.spine/features/_template/plan.md" "'$TMP_DIR'/four-flows.md"
+      python3 - "'$TMP_DIR'/four-flows.md" <<"PY"
+from pathlib import Path
 import sys
-src, dst = sys.argv[1], sys.argv[2]
-s = open(src).read().replace("#### Modify tax/allocation.py lines 1-34", "#### Modify tax/allocation.py", 1)
-open(dst, "w").write(s)
+p = Path(sys.argv[1])
+s = p.read_text()
+s = s.replace("## Acceptance matrix", "## Flow C — extra\n\n### C.1 — extra\n\n- → impl: [I1](#i1)\n\n## Flow D — extra\n\n### D.1 — extra\n\n- → impl: [I1](#i1)\n\n## Acceptance matrix")
+p.write_text(s)
 PY
-      if "'$VALIDATOR'" "$tmp" 2>&1 | grep -q "code heading missing file/line location"; then
-        rm -f "$tmp"
-        exit 0
-      fi
-      rm -f "$tmp"
-      exit 1
+      "'$VALIDATOR'" "'$TMP_DIR'/four-flows.md" >"'$TMP_DIR'/four-flows.out" 2>&1
+      grep -q "NOTE: 4 flows" "'$TMP_DIR'/four-flows.out"
     '
 
 echo ""

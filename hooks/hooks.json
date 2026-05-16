@@ -12,6 +12,18 @@
         ]
       }
     ],
+    "PreToolUse": [
+      {
+        "matcher": "Write|Edit|MultiEdit|Bash|ApplyPatch",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash -lc 'ROOT=$(git rev-parse --show-toplevel); \"$ROOT/.codex/hooks/pre-tool-use.sh\"'",
+            "timeout": 5
+          }
+        ]
+      }
+    ],
     "Stop": [
       {
         "matcher": ".*",

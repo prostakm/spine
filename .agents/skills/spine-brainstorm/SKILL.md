@@ -113,6 +113,9 @@ Turn an idea into a short, approved design that is clear enough to hand off to
 - Write the proposed design to `## Proposed Design` in spec.md with `Status: draft`
 - Get user approval before writing the spec
 - Explicit chat approval (`approved`, `spec approved`, `I approve`) counts here
+  **but only for the spec gate — this does NOT authorize implementation.**
+  After spec approval, you must STOP and transition to planning via `spine-pwf`.
+  The PreToolUse hook mechanically blocks code writes until plan.md is approved.
 - After approval, update `## Proposed Design` status to `Status: approved`
 - Update `## Resume` to reflect whether the next action is re-review or spec write-up
 
@@ -130,6 +133,11 @@ Turn an idea into a short, approved design that is clear enough to hand off to
 - Include `## Boundaries` with both `NOT:` exclusions and `DO NOT:`
   anti-patterns. Anti-patterns from the pre-mortem and discussion
   belong here.
+- Include `## Flows` section: list 1-3 behavioral flows (data paths
+  through the system) the change touches. Helps the planner decompose
+  the plan along the same axes the reviewer uses to read it. Format:
+  short bulleted list, one line per flow, naming the trigger and the
+  components touched.
 - Hard-wrap prose at 100 chars; rewrite to fit
 - Bold only the smallest crucial fragment
 - **Splitting**: if the feature covers multiple independent concerns, propose splitting:

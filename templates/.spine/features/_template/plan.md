@@ -1,244 +1,214 @@
-# Feature: {FEATURE_NAME}
+# Feature: {slug}
 
-<!--
-Navigation:
-  gd on a [link](#anchor) jumps to heading.
-  gf on a path opens the file.
-  Slug rule: lowercase, drop punctuation, spaces→dash.
+> **Story:**
+> {Line 1 — what changes.}
+> {Line 2 — gap it closes.}
+> {Line 3 — win after ship.}
 
-Style:
-  - Caveman phrasing in lists. Prose only for Why grouped / What changes.
-  - Bullet points over paragraphs.
-  - No markdown tables. Use fenced `text` blocks if tabular data needed.
-  - Bold only the smallest crucial fragment.
-  - Hard-wrap prose at 100 chars.
+## Status
+- **Status:** {DRAFT|REVIEW|APPROVED|...}
+- **Strategy:** {CORRECTNESS|EQUIVALENCE|STRUCTURAL|REGRESSION}
+- **Risk:** {LOW|MEDIUM|HIGH} — {one-line justification}
+- **Scope:** {one-line scope statement}
 
-Criticality tags (use sparingly on decisions):
-  > [!CAUTION]   data loss, money, corruption, silent wrong results
-  > [!WARNING]   directly affects what users see or experience
-  > [!IMPORTANT] locks in: constrains future architecture or behavior
-  > [!TIP]       default / no tag — render as plain heading
--->
-
-## Overview
-
-### System flow
+## System view
 
 ```text
-┌─ {concern} ─────────────────────────────────────────┐
-│ {file path}                                  [M]    │
-│ {one short sentence on what changes here}           │
-└────────┬────────────────────────────────────────────┘
-         │ {verb: used by / called by / consumed by}
-         ▼
-┌─ {next concern} ────────────────────────────────────┐
-│ ...                                                 │
-└─────────────────────────────────────────────────────┘
+{ASCII diagram — components and relationships}
+{Mark [NEW], [M], [UNCHANGED], locked boundaries}
 ```
 
-### File map
+## Behaviors
+
+- Flow A — {name} ({write path | read path | lifecycle})
+- Flow B — {name} ({when applicable})
+
+System-wide invariants:
+
+- **P1** — {invariant as single fact}
+  - holds: {site}
+  - test: `{test_name}`
+  - never: {forbidden behavior, if applicable}
+  <details><summary>{deeper rationale title, if any}</summary>
+
+  - {deeper bullets}
+  </details>
+
+## Flow A — {name}
 
 ```text
-{root-pkg}/
-├── {file}                              [M] short reason
-├── {file}                              [C] short reason
-├── {sibling-dir}/                      ...
-└── ...
+{ASCII flow diagram}
 ```
 
-## Context
+### A.1 — {step name}
 
-- Spec: `.spine/features/{slug}/spec.md` (approved) — or "(none, intent here)"
-- Goal: {one line, user outcome}
-- Gap: {what's wrong now}
-- In: {what changes in this slice}
-- Out: {what's deferred or unchanged}
-- Constraints: {hard limits}
+> **Step intent:** {One or two sentences on what this step does and why.}
 
-**Status:** DRAFT | REVIEW | ANNOTATED | APPROVED
-**Scope:** {one sentence}
-**Risk:** LOW | MEDIUM | HIGH — {one phrase}
-**Strategy:** CORRECTNESS | EQUIVALENCE | STRUCTURAL | REGRESSION
+- {🔴|🟡} **D1** — {decision title}
+  <details><summary>chose: {what}</summary>
+
+  - over: {alternative}
+  - why not: {fragment}
+  - consequence: {what this commits to}
+  </details>
+
+- **R1** — {rule as fact}
+  - holds: {site}
+  - test: `{test_name}`
+  - never: {forbidden behavior}
+
+- **P2** — {step-local invariant}
+  - holds: {site}
+  - test: `{test_name}`
+  - pattern: {implementation pattern, if useful}
+  - never: {forbidden behavior}
+
+- → impl: [I1](#i1), [I2](#i2)
+
+### A.2 — {step name}
+
+> **Step intent:** {One or two sentences on what this step does and why.}
+
+- → impl: [I3](#i3)
+
+## Flow B — {name} (when applicable)
+
+```text
+{ASCII flow diagram}
+```
+
+### B.1 — {step name}
+
+> **Step intent:** {One or two sentences on what this step does and why.}
+
+- → impl: [I4](#i4)
+
+## Acceptance matrix
+
+| ID | Invariant / rule | Test | Strategy |
+|----|------------------|------|----------|
+| P1 | ...              | ...  | ...      |
+| R1 | ...              | ...  | ...      |
 
 ---
 
-## Chapters
+<!-- ═══════════════════════════════════════════════════════ -->
+<!-- TRUST BOUNDARY — reviewer stops here                   -->
+<!-- ═══════════════════════════════════════════════════════ -->
 
-### Chapter 1: {name}
+## Agent instructions
 
-**Why grouped:** {1–3 short prose sentences — why this is one review unit}
+### Verification packet
 
-**What changes:** {1–2 sentences — system-level summary}
+- Strategy: `{strategy}`
+- Properties: `{P-refs}`
+- Rules: `{R-refs}`
+- Verifier constraints: {bounded, fresh subagent, judge from {evidence}}
 
-**Decisions:**
-
-> [!IMPORTANT] **D1:** {title}
-> - **Chose:** {what}
-> - **Over:** {alt} — {why not}
-> - **Consequence:** {what this locks in}
->   ([code](#modify-path-lines-start-end) or other anchor)
-
-**Provisions:**
-
-*Properties:*
-
-- **P0** — `static | runtime` — `human | human-validated | agent-proposed` —
-  {short label}.
-  - Invariant: {what must hold}
-  - Invariant: {additional invariant if any}
-  - Evidence: [`test_name`](#test_name) +
-    [other test or code anchor](#anchor).
-
-*Rules / fixtures (delete if not used):*
-
-**R1: {name}**
-
-- {fixture case 1 in caveman form}
-- {fixture case 2}
-
-*Boundary behavior (delete if not used):*
+### File manifest
 
 ```text
-{operation} → {outcome}
-{operation} → {outcome}
+{root}/
+├── {file}                         [M] → I1, I2
+├── {file}                         [C] → I3
+└── {file}                         [D] → I4
 ```
 
-*Edge cases:*
+### Implementation
 
-- {case in caveman form, 1 line}
-- {case}
+#### I1 — {short title} <a id="i1"></a>
 
-### Cross-chapter
-
-(none) — or list decisions/provisions that genuinely span chapters.
-
----
-
-## Contracts
-
-(Delete if no boundary changes)
-
-### Inputs / Outputs
-
-```{lang}
-{shapes}
-```
-
-### Side effects
-
-- ⚠ {effect}
-
-═══════════════ TRUST BOUNDARY — reviewer stops here ═══════════════
-
-## Implementation tracks
-
-### Track 1: {name}
-
-**Depends on:** {prior tracks or none}.
-
-**Constraints:**
-
-- {imperative directive in caveman form}
-- {imperative directive}
-
-**Code:**
-
-#### Modify {path} lines {start}-{end}
+- **Intent:** {one sentence; agent fallback if diff doesn't apply}
+- **References:** D1, P1, R1
+- **Critical:** 🔴
 
 ```diff
-@@ {symbol or local region} ({path}:{start}-{end}) @@
- {enough unchanged context for safe placement}
--{removed line}
-+{added line}
- {enough unchanged context for safe placement}
+--- a/{path}
++++ b/{path}
+@@ -1,3 +1,4 @@
+ {context}
+-{old}
++{new}
 ```
 
-#### New file {path}
+#### I2 — {short title} <a id="i2"></a>
 
-```{lang}
-{full contents}
+- **Intent:** {one sentence; agent fallback if diff doesn't apply}
+- **References:** P2
+
+```diff
+--- /dev/null
++++ b/{new-path}
+@@ -0,0 +1,3 @@
++{new file contents}
 ```
 
-**Tests:**
+#### I3 — {short title} <a id="i3"></a>
 
-#### `test_name`
+- **Intent:** {one sentence; agent fallback if diff doesn't apply}
+- **References:** {D/P/R refs}
 
-*Unit | Hypothesis property | Snapshot | Parametrized | Component | Hook*.
-Proves PX.
-
-- In: {input/setup, code-shaped where helpful}
-- Assert: {expectation, code-shaped where helpful}
-- Note: {optional one-line note}
-
-**Verify:**
-
-```bash
-{commands}
+```diff
+--- a/{path}
++++ b/{path}
+@@ -1,2 +1,2 @@
+-{old}
++{new}
 ```
 
-**Green when:**
+#### I4 — {short title} <a id="i4"></a>
 
-- {criterion referencing test names}
-- {criterion}
+- **Intent:** {one sentence; agent fallback if diff doesn't apply}
+- **References:** {D/P/R refs}
 
-## Verification evidence
+```diff
+--- a/{path}
++++ b/{path}
+@@ -1,2 +1,2 @@
+-{old}
++{new}
+```
 
-### Verifier packet
+### Acceptance gate
 
-- Strategy: `{STRATEGY}`.
-- Test files: {list}.
-- Each test cites its provision in a docstring/comment.
-- Verifier extracts cited IDs; confirms every chapter provision has at
-  least one citing test.
-- Verifier constraints: fresh subagent; chapter provisions + test files
-  only; no implementation code.
+- [ ] {validation command} passes
+- [ ] Properties {P-refs} hold
+- [ ] {plan-specific checks}
 
-### Mutation candidates
+### Agent self-review (fill after implementation)
 
-- {what could break and which test catches it}
+- Hardest: ___
+- Least confident: ___
+- Deviations from plan: ___
 
-### Static-proof gaps
+---
 
-- {what static check would miss}
+## Decisions log
+- {date} — {decision} — {rationale}
+
+## Errors
+- {error} — attempt: {attempt} — resolution: {resolution}
 
 ## Verification Gate
-
 - Status: pending
-- Last run: never
-- Verdict: pending
-- Blocking issues: none yet
+- Last run: none
+- Verdict: not run
 
-## Acceptance gate
-
-- [ ] Track 1 green — {summary}
-- [ ] Track 2 green — {summary}
-- [ ] Every chapter provision has at least one citing test
-- [ ] {strategy-specific}
+<!-- REVIEW: PENDING — add R> comments inline. -->
 
 ## Review Gate
-
 - Status: pending
 
-## State
-
-- Phase: planning
-- Verification Gate: pending
-
 ## Resume
-
 - Source: plan
 - Phase: planning
 - Gate: pending
-- Current Slice: review and approve plan
-- Next Step: reviewer reads chapters top-down, marks `> [R]: APPROVED`
-- Open Questions: {list}
 - Verification Gate: pending
-- Files in Play: `.spine/features/{slug}/plan.md`
+- Current Slice: {what state the plan is in}
+- Next Step: {what happens next}
+- Open Questions: {any}
+- Files in Play: {paths}
 
-### Agent self-review
-
-(Filled after implementation completes.)
-
-- Hardest: {decision hardest to implement}
-- Least confident: {what might be wrong}
-- Deviations: {what differs from plan and why}
+## State
+- Phase: planning
+- Verification Gate: pending

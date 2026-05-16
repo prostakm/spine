@@ -29,85 +29,101 @@ Pick based on the nature of the change (from spec.md `## Change type` if present
 Only CORRECTNESS requires new domain knowledge from the reviewer.
 All others verify preservation of existing behavior.
 
+## Flow decomposition
+- Identify 1-3 behavioral flows from the spec
+- Common pattern: write paths and read paths separately
+- A flow is one coherent path through the system
+- If data moves in different directions through different components, split it
+- Test: same trigger, same direction, same components? one flow
+- Test: different trigger, direction, or component chain? two flows
+- Cap at 3 flows; if a 4th appears, split the feature
+
 ## Plan structure
 
-The plan has two zones separated by a trust boundary.
+The template is canonical: `templates/.spine/features/_template/plan.md`.
+The example is canonical style: `docs/EXAMPLE-PLAN.md`.
+
+The plan has two zones separated by `<!-- TRUST BOUNDARY ... -->`.
 
 **Above the boundary (reviewer reads top-down):**
-
-- **Overview**: system-flow diagram (caveman boxes, one short sentence per
-  box, no provision IDs) + file map (tree-style with `[M]/[C]/[D]` markers).
-- **Context**: 6 lines max — Goal / Gap / In / Out / Constraints / Spec link.
-- **Chapters**: each chapter is a coherent review unit. Per chapter:
-  - **Why grouped** (1–3 prose sentences) — argues why this is one unit.
-  - **What changes** (1–2 sentences) — system-level summary.
-  - **Decisions**: real forks only. Format: Chose / Over / Consequence.
-    Use callouts (`> [!CAUTION/WARNING/IMPORTANT]`) sparingly.
-  - **Provisions**: chapter-scoped formal claims, in this order:
-    *Properties*, *Rules / fixtures*, *Boundary behavior*, *Edge cases*.
-    Skip subsections that don't apply.
-- **Contracts**: only when boundaries change. Inputs/outputs as code blocks.
+- **Story**: 3-line narrative — change, gap, win
+- **Status**: status, strategy, risk, scope
+- **System view**: ASCII diagram of components and boundaries
+- **Behaviors**: system-wide invariants, then 1-3 flow walkthroughs
+  - each flow has ASCII diagram
+  - each step uses `### A.1`, `### A.2`, `### B.1`, ...
+  - each step has `> **Step intent:**`
+  - decisions, properties, rules colocate at the step they govern
+  - each step ends with `→ impl: [I3](#i3)` links
+- **Acceptance matrix**: index view of rules/properties and tests
+- EQUIVALENCE extras: `## Equivalence anchor` and `## Delta (perf)` may stand
+  alone after flows; do not bury them in details
 
 **Below the boundary (agent executes):**
+- **Verification packet**: strategy, property IDs, rule IDs, verifier constraints
+- **File manifest**: tree with `[M]`, `[C]`, `[D]`, and `→ I-refs`
+- **Implementation**: every I-step is a unified diff
+  - `#### I{N} — {short title} <a id="i{N}"></a>`
+  - `Intent`: fallback if diff does not apply cleanly
+  - `References`: D/P/R IDs implemented
+  - `Critical`: optional `🔴` or `🟡`
+  - fenced `diff`; new files diff from `/dev/null`
+- **Acceptance gate**: commands and property/rule checks
+- **Agent self-review**: fill after implementation
+- **Verification Gate / Review Gate / State / Resume**: hook-readable blocks;
+  DO NOT change their marker formats
 
-- **Implementation tracks**: each track is independently verifiable.
-  Per track:
-  - **Depends on**: prior tracks or none.
-  - **Constraints**: imperative directives in caveman form (extracted from
-    decisions).
-  - **Code**: modifications as full `diff` snippets with file/line location
-    in the `####` heading and hunk header. Include enough unchanged context
-    for safe placement. New files use plain language-tagged blocks. Each code
-    block lives under a `####` heading.
-  - **Tests**: each test under a `####` heading; body is `In:` / `Assert:`
-    bullets in caveman form. No code stubs, no parametrize blocks spelled
-    out.
-  - **Verify**: bash commands.
-  - **Green when**: criteria referencing test names from above.
-- **Verification evidence**: verifier packet + mutation candidates +
-  static-proof gaps.
-- **Verification Gate / Review Gate / State / Resume**: hook-readable
-  blocks. DO NOT change their format.
-- **Acceptance gate**: checklist of track green-criteria + cross-cutting
-  checks.
+## Voice
+- Telegraph cavemen bullets
+- Noun phrases or imperative fragments, not full sentences
+- No connective tissue: drop "this means", "in order to", "because of that"
+- File paths, identifiers, commands in backticks
+- Decisions:
+  - `- 🔴 **D1** — title`
+  - `chose:` / `over:` / `why not:` / `consequence:`
+- Properties:
+  - `- 🔴 **P3** — invariant fact`
+  - `holds:` / `test:` / `pattern:` / `never:`
+- Rules:
+  - rule fact in bold-ID line
+  - `holds:` / `test:` / `never:` underneath
+- Use `never:` by default; use `must not:` for security/regulatory negatives
+- Imperative negatives, no subject: `never: archive a running run`
+
+## Folding
+- Use `<details>` for rationale; summary line is scan-speed fact
+- Summary says the one reviewer-needed fact: `chose: timestamp column`
+- Blank line required after `<summary>` and before `</details>` for nested markdown
+- Always fold decision rationale beyond the summary
+- Always fold property/rule deeper rationale beyond `holds:` + `test:` + `never:`
+- Do not fold:
+  - step-intent blockquotes
+  - flow ASCII diagrams
+  - system-wide invariant header + `holds:` + `test:`
+  - equivalence anchor
+  - delta perf table
+  - acceptance matrix
+  - anything below trust boundary
+
+## Negative constraints
+- Add `never:` at write sites, guard sites, idempotent operations, auth checks,
+  and equivalence-preservation sites
+- State a negative if a reasonable implementer might violate it unnoticed
+- Cap at 1-3 sharp negatives per property/rule
+- Skip negatives that are obviously wrong on code read
+- Voice: imperative fragment, no subject
 
 ## Anchors and navigation
-
-Every code block and test spec gets a `####` heading. Cross-links use
-`[label](#slug)` where slug is computed from the heading by:
-
-1. lowercase
-2. drop punctuation (dot, comma, colon, quotes, brackets, `*`, `~`, backtick, etc.; keep `_`)
-3. drop slashes
-4. replace runs of whitespace with single `-`
-
-Examples:
-- `#### Modify payroll/calculator.py lines 42-88` →
-  `#modify-payrollcalculatorpy-lines-42-88`
-- `#### \`test_total_withholding_never_negative\`` →
-  `#test_total_withholding_never_negative`
-
-Slugs match GitHub and marksman (nvim) — same anchor works in PR review and
-in editor `gd` navigation.
+- Review-zone impl links use `[I{N}](#i{N})`
+- Each I-step must include matching `<a id="i{N}"></a>`
+- Stable anchors survive heading text edits
+- Keep I-step order same as execution order
 
 ## Test specs
-
-Each test spec is a `####` heading + bullet body:
-
-```markdown
-#### `test_name`
-
-*Unit | Hypothesis property | Snapshot | Parametrized | Component | Hook*.
-Proves PX (and PY if multiple).
-
-- In: {input/setup, code-shaped where helpful}
-- Assert: {expectation, code-shaped where helpful}
-- Note: {optional, e.g. example count, snapshot path, slow marker}
-```
-
-Multiple assertions sub-bullet under Assert. Code-shape is preferred when
-clearer than prose: `result ≥ Money(0, "USD")` over "result is non-negative
-Money".
+- Tests are named in the review zone via `test:` bullets and acceptance matrix
+- Implementation diffs add/update the actual test files
+- Every property or rule should map to at least one test, lint, script, or
+  manual verification line
 
 ## Spec-to-plan derivation
 
@@ -115,40 +131,36 @@ The plan is the single source of truth for implementation. It MUST carry
 forward all spec facts so the agent never needs to open spec.md.
 
 Carry-forward (reviewer skims, does not re-approve):
-- Spec Problem → plan Context (user goal, current gap, scope)
-- Spec I/O → plan Contracts (if types are complete; otherwise enriched)
-- Spec Change type → plan Strategy header
-- Spec Acceptance Criteria → plan Acceptance gate (delegated, not restated)
+- Spec Problem → plan Story / Status / Scope
+- Spec I/O → flow diagrams or step intents
+- Spec Change type → plan Strategy
+- Spec Acceptance Criteria → Acceptance matrix + Acceptance gate
+- Spec Flows → plan Behaviors
 
 Enrichment (reviewer deep-reads - this is the plan's unique value):
-- Actual touched files → plan Overview file map
-- Spec Requirements → plan Rules as plain acceptance cases
-- Spec Invariants → plan Properties with proof framing + enforcement tags
-- Spec Boundaries → plan Decisions with Chose/Over/Consequence tradeoffs
-- New review-relevant technical context → fold into compact plan Context
-- Verifier contract → plan Verification evidence + Verification Gate skeleton
+- Actual touched files → File manifest
+- Spec Requirements → Rules at flow steps
+- Spec Invariants → Properties at flow/write/guard sites
+- Spec Boundaries → Decisions with folded tradeoffs
+- New review-relevant technical context → System view + step intent
+- Verifier contract → Verification packet
 
-**Key rule:** when a spec fact appears in the plan, mark its origin
-implicitly (Strategy derived from spec, Goal distilled from spec). The reviewer
-should always know whether they're reading spec context or new planning output.
+**Key rule:** when a spec fact appears in the plan, mark its origin implicitly.
+The reviewer should know whether reading spec context or new planning output.
 
 **No spec present:** carry-forward fields are blank — the plan defines
 everything from scratch. Reviewer treats all context as new.
 
-- The approved `plan.md` should be sufficient to start implementation with
-  only `## Resume`, `plan.md`, `git diff --stat`, and then the current step's
-  file tree entries
-- Do not rely on implementation-time rereads of `.spine/project.md`,
-  `.spine/conventions.md`, `.spine/progress.md`, `findings.md`, `log.md`, or
-  AGENTS files if the relevant rule can be copied into the plan once
-- If a file outside the manifest must be reopened only to learn a fact needed
-  for safe edits, the plan is missing context; patch the plan instead of
-  normalizing ad hoc exploration
+- Approved `plan.md` must be sufficient to start implementation with only
+  `## Resume`, `plan.md`, `git diff --stat`, and current I-step files
+- Do not rely on implementation-time rereads of project docs when the relevant
+  rule can be copied into the plan once
+- If a file outside manifest must be reopened only to learn safe-edit facts,
+  patch the plan instead of normalizing ad hoc exploration
 - Prefer exact facts over summaries:
-  - current function/component signatures inline with the step that edits them
-  - existing helper names and test fixtures inline with the step that uses them
-  - short local snippets around touched logic inline with the relevant step
-  - exact generated schema/type/export names when they affect the step
+  - current function/component signatures inline with relevant step
+  - existing helper names and test fixtures inline with relevant step
+  - exact generated schema/type/export names when they affect edits
   - exact commands for verify/build/test
 
 ## Strategy-specific proof content
@@ -191,6 +203,12 @@ everything from scratch. Reviewer treats all context as new.
 - Smoke tests (wiring proofs)
 - Properties (structural invariants)
 
+### REGRESSION
+- Reproduction (test, expected, actual)
+- Blast radius (scope + verification suite)
+- New invariant (the violated rule)
+- Properties (the invariant encoded as a property)
+
 ## Enforcement ladder
 
 For every decision and property, prefer the strongest cheapest enforcement that
@@ -227,34 +245,22 @@ candidate immediately:
   per-feature structural tests
 - record promotion candidates in `findings.md`
 
-### REGRESSION
-- Reproduction (test, expected, actual)
-- Blast radius (scope + verification suite)
-- New invariant (the violated rule)
-- Properties (the invariant encoded as a property)
-
 ## Property extraction
 
 When writing the plan:
 1. Pull invariants from spec.md `## Invariants` → candidate properties
 2. Classify each by category: range | relational | stability |
    preservation | structural
-3. Choose the enforcement mode first: static | runtime | manual
-4. Write properties with exactly two fields:
-   - `Invariant`: category + what must hold (plain English)
-   - `Evidence`: the test, rule, script, or check that proves it
-   Use callouts only for the most review-critical properties:
-   `> [!{CALLOUT}] **P{N}** — {enforcement} — {author}`
-   Lower-priority properties can be plain bullets:
-   `- **P{N}** — {enforcement} — {author}`
+3. Choose enforcement first: static | runtime | manual
+4. Write properties with fields useful to reviewer:
+   - `holds:` where invariant is enforced
+   - `test:` evidence name
+   - `pattern:` implementation pattern when helpful
+   - `never:` negative constraint when useful
 5. Properties go ABOVE the trust boundary — they are review artifacts
-6. Test details (below trust boundary, inline in Implementation tracks)
-   specify the framework and generation strategies only for runtime-enforced
-   properties
-7. Write properties so they can be copied verbatim into a verifier packet.
-   Avoid references that require reading the implementation section to recover
-   meaning.
-8. If spec has no invariants, elicit from the codebase:
+6. Test implementation details live below trust boundary in diffs
+7. Write properties so they can be copied verbatim into a verifier packet
+8. If spec has no invariants, elicit from codebase:
    - What return values are bounded? → range
    - What increases when input increases? → relational
    - What must stay the same after this change? → preservation
@@ -265,33 +271,29 @@ When writing the plan:
 Every plan must define a context-minimized verifier packet below the trust
 boundary.
 
-- Purpose: let a fresh verifier judge proof strength without reading the full
-  plan or the implementation tracks
-- Extract only from the approved proof artifacts above the trust boundary:
+- Purpose: let a fresh verifier judge proof strength without reading full plan
+- Extract only from approved proof artifacts above trust boundary:
   active strategy, properties, and strategy-specific invariants
-- The executor adds bounded verification evidence separately: touched test or
-  rule files, relevant test names or rule names, commands run, pass/fail
-  summary, generated-case counts where applicable, and property-to-evidence
-  mapping
-- The verifier prompt should ask which runtime mutants would likely survive the
-  current runtime evidence and which properties are only weakly covered.
-  Do not apply mutation-style analysis to lint/formatter/static-rule proofs;
-  for those, ask whether the rule meaningfully enforces the invariant and what
-  bypasses would still survive.
-- `## Verification Gate` starts as `pending` and is updated to `passed` or
-  `failed` during execution
+- Executor adds bounded verification evidence separately: touched test/rule
+  files, relevant test/rule names, commands run, pass/fail summary,
+  generated-case counts where applicable, property-to-evidence mapping
+- Verifier prompt asks which runtime mutants likely survive current evidence
+  and which properties are weakly covered
+- Do not apply mutation-style analysis to lint/formatter/static-rule proofs;
+  ask whether rule meaningfully enforces invariant and what bypasses survive
+- `## Verification Gate` starts pending and updates to passed/failed during execution
 
 ## Property authorship rule
 
 - **human**: reviewer wrote it. Trusted proof.
-- **human-validated**: agent proposed it, reviewer confirmed with
-  `> [R]: ✓`. Trusted proof.
-- **agent-proposed**: agent wrote it, not yet validated. NOT trusted
-  as proof until reviewer validates.
+- **human-validated**: agent proposed it, reviewer confirmed with `R> ✓`.
+  Trusted proof.
+- **agent-proposed**: agent wrote it, not yet validated. NOT trusted as proof
+  until reviewer validates.
 
-Agent MUST NOT modify human-authored property statements during
-implementation. If implementation reveals a property is wrong → STOP,
-propose revision, wait for `> [R]:` approval.
+Agent MUST NOT modify human-authored property statements during implementation.
+If implementation reveals a property is wrong → STOP, propose revision, wait
+for `R>` approval.
 
 Properties the agent can't express clearly → escalate to reviewer.
 
@@ -315,28 +317,30 @@ If the plan reveals the feature is too large or covers multiple concerns:
 
 ## Style
 - Caveman phrasing in lists. Sentence fragments over sentences.
-- Prose only for `Why grouped` and `What changes` — they argue, lists state.
+- Decisions/properties/rules colocate at flow sites; standalone sections only
+  for system-wide content.
 - Bullet points over paragraphs everywhere else.
-- No markdown tables. Use fenced `text` blocks if tabular data is needed.
+- Use `<details>` for rationale; summary line is scan-speed.
+- Properties at write/guard sites get `never:` bullets.
+- No markdown tables except Acceptance matrix and optional delta perf table.
 - Bold only the smallest crucial fragment.
 - Hard-wrap prose at 100 chars.
-- Code blocks: language-tagged. `text` only for plain diagrams (trees,
-  flowcharts). Modifications use full `diff` snippets with file/line location.
+- Code blocks: language-tagged. `text` only for plain diagrams.
+  Modifications use full unified `diff` snippets.
 - Above trust boundary: optimize for review speed and signal.
 - Below trust boundary: optimize for implementation accuracy.
-- Below trust boundary: copy facts, not references, when those facts are
-  required for safe edits.
+- Below trust boundary: copy facts, not references, when needed for safe edits.
 - File paths, symbols, commands in backticks.
-- Metadata: key-value pairs, not tables.
+- Metadata: key-value pairs, not prose paragraphs.
 
 ### Notation choices
 - Data/control flow: `a → b → c` (inline, one line).
 - Rules / fixtures: `- When {condition}, {observable}`.
-- Provisions: Properties + Rules / fixtures + Boundary behavior + Edge cases.
-- Domain invariants: property bullets with `Invariant` + `Evidence` fields.
+- Provisions: properties + rules at flow steps.
+- Domain invariants: property bullets with `holds:` + `test:` + `never:`.
 - Endpoint behavior: grouped by endpoint, one line per case.
 - Data shapes: colon-aligned code blocks.
-- Alternatives: Chose/Over/Consequence (not prose paragraphs).
+- Alternatives: `chose:` / `over:` / `why not:` / `consequence:`.
 - Side effects: `⚠` marker prefix.
 - Criticality tags → callout mapping (use sparingly):
   - `⚠️` volatile  → `> [!CAUTION]`
@@ -345,17 +349,18 @@ If the plan reveals the feature is too large or covers multiple concerns:
   - `👁️` UX-critical → `> [!WARNING]`
   - no tag          → plain decision paragraph or `> [!TIP]` if useful
 - Branching (2-3 paths): aligned cases or a fenced flow diagram.
-- File map: tree-style with `[M]`/`[C]`/`[D]` markers in Overview.
-- Implementation tracks: code changes as full unified-diff snippets with
-  file/line location; new files as full language-tagged blocks.
+- File manifest: tree-style with `[M]`/`[C]`/`[D]` markers.
+- Implementation steps: code changes as full unified-diff snippets; new files
+  as diffs from `/dev/null`.
 
 ### When to use diagrams
-- System flow: when touched files form >1 concern. One box per concern.
-- Arch boundaries schematic: when reviewer needs to verify no arch violations.
+- System view: when touched files form >1 concern
+- Flow diagram: one per behavioral flow
+- Arch boundaries schematic: when reviewer needs to verify no arch violations
 - Control flow tree: when branching logic has >2 paths and fixture arrows
-  can't express the decision structure. Shows outcomes, not variable names.
-- If fixture arrows + ALWAYS/NEVER properties cover the concept, prefer those.
-- One diagram per concern, not per function.
+  can't express decision structure
+- If fixture arrows + ALWAYS/NEVER properties cover the concept, prefer those
+- One diagram per concern, not per function
 
 ### Diagram notation
 - Arch boundaries schematic: `───` locked, `───→` flow,
@@ -367,8 +372,69 @@ If the plan reveals the feature is too large or covers multiple concerns:
 - Use `⚠` for side effects within sketches.
 
 ### Tables
-- Avoid tables in plans.
-- If reviewer wants tabular data, use fenced `text` blocks.
-- Do not use markdown tables in chapter content.
+- Avoid tables in narrative plan content.
+- Acceptance matrix is required and may use markdown table.
+- EQUIVALENCE delta perf table may use markdown table.
+
+## Plan Review (Gate 2)
+
+Gate 2 is enforced mechanically: the PreToolUse hook blocks writes to
+non-`.spine/` files while the plan is unapproved. Only edits to `plan.md` and
+`spec.md` are allowed until approval is recorded.
+
+Before requesting review:
+- run `.spine/scripts/validate-plan.sh .spine/features/{slug}/plan.md`
+- fix hard validation failures
+- leave `## Review Gate` pending until explicit approval
+
+Review prompt:
+
+> Plan at `.spine/features/{slug}/plan.md`.
+> Start with `Status` and top `Risk`.
+> Then review `System view`, `Behaviors`, and `Acceptance matrix`.
+> Stop at the trust boundary.
+> Focus comments on chosen approach, proof cases, properties/rules, and missing risk.
+> Mark properties you approve with `R> ✓`.
+> Add `R>` comments next to anything you want changed.
+> Mark `R> APPROVED` when ready, or say `approved` / `plan approved` in chat.
+> Mirror explicit chat approval into `plan.md` before implementation.
+
+Then STOP.
+
+### Inline review protocol
+
+User adds `R>` comments in `plan.md`, co-located with context:
+
+```markdown
+- **P1** — net pay is never negative
+  - holds: payroll calculation
+  - test: `test_net_pay_non_negative`
+R> also add: net pay never exceeds gross pay
+```
+
+### On "address comments" / "apply review"
+
+1. Find all `R>` lines not marked `✓`.
+2. Change requests → revise the plan.
+3. Questions → answer as `> [A]: response`.
+4. Mark done: `R> ✓ original`.
+5. If changes were made → STOP for re-review.
+6. If `R> APPROVED` or explicit chat approval exists → mirror approval into
+   `plan.md`, update matching I-step references, then hand off to `spine-implement`.
+
+### Review invariants
+
+- Reviewer reads above trust boundary only unless they want implementation detail.
+- Reviewer comments go above the trust boundary.
+- Approval phrase in chat must be mirrored into plan state before execution.
+- If reviewer changes a property, decision, rule, or boundary, update matching
+  I-step references before implementation starts.
+
+## Strategy-driven implementation
+- Executor follows I-steps in order
+- If a diff does not apply, use `Intent` and `References` to adapt locally
+- Do not change reviewed behavior while adapting diffs
+- If adaptation changes a reviewed decision/property/rule, stop and ask
+- Keep verification evidence tied back to property/rule IDs
 
 See `docs/EXAMPLE-PLAN.md` for the expected style.
